@@ -19,6 +19,9 @@ export const DETAILS = {
 } as const;
 export type DetailKey = keyof typeof DETAILS;
 
+// Offered in the product editor's category list alongside any the store has already used.
+export const CATEGORIES = ["Bangles", "Bracelets", "Chains", "Coins", "Earrings", "Mangalsutra", "Necklace Sets", "Necklaces", "Nose Pins", "Pendants", "Rings"];
+
 export const STATUSES = {
   live: "Live: shown to customers",
   draft: "Draft: hidden, staff can preview",

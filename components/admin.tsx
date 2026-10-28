@@ -6,7 +6,7 @@ import { useMemo, useState, useTransition, type FormEvent } from "react";
 import { duplicateItem, markSold, saveItem, saveRates, setEnquiryStatus, setQty, setStatus, uploadSignature } from "@/app/admin/actions";
 import { authClient } from "@/lib/auth-client";
 import type { Item } from "@/lib/data";
-import { DETAILS, ENQUIRY_STATUSES, STATUSES, type EnquiryStatus, type Status } from "@/lib/fields";
+import { CATEGORIES, DETAILS, ENQUIRY_STATUSES, STATUSES, type EnquiryStatus, type Status } from "@/lib/fields";
 import { formatDayTime, isToday, perGram, priceOf, rupees, type Rate } from "@/lib/price";
 import { staffEmail } from "@/lib/staff-email.mjs";
 import { BackIcon, CloseIcon, CopyIcon, EyeIcon, EyeOffIcon, MinusIcon, PlusIcon, SearchIcon } from "./icons";
@@ -228,6 +228,9 @@ export function ItemForm({ item, categories, rates, makingPct, taxPct, copied }:
   const [uploading, setUploading] = useState(0);
   const [uploadError, setUploadError] = useState("");
   const [pricing, setPricing] = useState<"weight" | "fixed">(item?.pricing ?? "weight");
+  const [category, setCategory] = useState(item?.category ?? "");
+  const [newCategory, setNewCategory] = useState(false);
+  const categoryOptions = [...new Set([...CATEGORIES, ...categories])].sort();
   // Live inputs for the price preview.
   const [f, setF] = useState({
     rateKey: item?.rateKey ?? rates[0]?.key ?? "",
@@ -299,12 +302,25 @@ export function ItemForm({ item, categories, rates, makingPct, taxPct, copied }:
         <div className="form-grid two">
           <div className="field">
             <label htmlFor="category">Category</label>
-            <input id="category" name="category" list="categories" defaultValue={item?.category} autoComplete="off" placeholder="Necklaces…" />
-            <datalist id="categories">
-              {categories.map((c) => (
-                <option key={c} value={c} />
-              ))}
-            </datalist>
+            {newCategory ? (
+              <>
+                <input id="category" name="category" value={category} onChange={(e) => setCategory(e.target.value)} autoFocus autoComplete="off" placeholder="Anklets…" />
+                <p className="help">
+                  Spell it the way customers should see it.{" "}
+                  <button type="button" className="inline-link" onClick={() => (setNewCategory(false), setCategory(item?.category ?? ""))}>
+                    Choose from the list
+                  </button>
+                </p>
+              </>
+            ) : (
+              <select id="category" name="category" value={category} onChange={(e) => (e.target.value === "+new" ? (setNewCategory(true), setCategory("")) : setCategory(e.target.value))}>
+                <option value="">Choose a category</option>
+                {categoryOptions.map((c) => (
+                  <option key={c}>{c}</option>
+                ))}
+                <option value="+new">+ New category…</option>
+              </select>
+            )}
           </div>
           <div className="field">
             <label htmlFor="code">Design code</label>

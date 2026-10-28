@@ -724,6 +724,7 @@ main:has(> .visit-band:last-child) + .site-foot { margin-top: 0; }
 .form-grid { display: grid; gap: 18px; align-content: start; }
 @media (min-width: 640px) { .form-grid.two { grid-template-columns: 1fr 1fr; } }
 .field { display: grid; gap: 6px; align-content: start; }
+.inline-link { padding: 0; border: 0; background: none; color: var(--ink); font: inherit; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 label, legend { font-size: 0.9375rem; font-weight: 500; }
 fieldset { margin: 0; padding: 0; border: 0; min-width: 0; }
 legend { margin-bottom: 12px; font-family: var(--font-display), Georgia, serif; font-size: 1.25rem; font-weight: 500; }
@@ -740,6 +741,8 @@ input, select, textarea {
   transition: border-color 0.2s var(--ease), box-shadow 0.2s var(--ease);
 }
 textarea { resize: vertical; }
+/* One chevron for every dropdown, instead of each browser's own arrow. */
+select { appearance: none; padding-right: 42px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236b625c' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; background-size: 16px; cursor: pointer; }
 input:hover, select:hover, textarea:hover { border-color: var(--gold-ink); }
 input:focus-visible, select:focus-visible, textarea:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
 input::placeholder, textarea::placeholder { color: var(--ink-2); opacity: 0.85; }
