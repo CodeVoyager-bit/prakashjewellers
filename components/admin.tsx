@@ -5,6 +5,7 @@ import { useState, useTransition, type FormEvent } from "react";
 import { saveItem, uploadSignature } from "@/app/admin/actions";
 import { authClient } from "@/lib/auth-client";
 import type { Item } from "@/lib/data";
+import { staffEmail } from "@/lib/staff-email.mjs";
 import { CloseIcon, PlusIcon } from "./icons";
 import { Photo } from "./shop";
 
@@ -16,18 +17,18 @@ export function LoginForm() {
   async function login(fd: FormData) {
     setBusy(true);
     setError("");
-    const { error } = await authClient.signIn.email({ email: String(fd.get("email")), password: String(fd.get("password")) });
+    const { error } = await authClient.signIn.email({ email: staffEmail(fd.get("phone")), password: String(fd.get("password")) });
     if (!error) return router.replace("/admin");
-    setError(error.status === 429 ? "Too many attempts. Wait a minute, then try again." : "That email and password don’t match a staff login.");
+    setError(error.status === 429 ? "Too many attempts. Wait a minute, then try again." : "That phone number and password don’t match a staff login.");
     setBusy(false);
   }
 
   return (
-    // onSubmit, not action: a form action resets the fields, which would clear the email on a typo.
+    // onSubmit, not action: a form action resets the fields, which would clear the number on a typo.
     <form onSubmit={(e) => (e.preventDefault(), login(new FormData(e.currentTarget)))} className="form-grid">
       <div className="field">
-        <label htmlFor="email">Email</label>
-        <input id="email" name="email" type="email" autoComplete="username" spellCheck={false} required />
+        <label htmlFor="phone">Phone number</label>
+        <input id="phone" name="phone" type="tel" inputMode="tel" autoComplete="username" placeholder="98765 43210…" required />
       </div>
       <div className="field">
         <label htmlFor="password">Password</label>

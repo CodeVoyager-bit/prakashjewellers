@@ -2,7 +2,7 @@
 
 Catalogue and WhatsApp enquiry site for a jewellery shop. Every price is worked out live from the day's 22K gold rate, which the owner updates once a day. Customers add pieces to an enquiry and send it to the shop's WhatsApp; there is no customer login and no online payment. Staff manage everything at `/admin`.
 
-**Stack:** Next.js 16 on Vercel · MongoDB Atlas · better-auth (staff email/password, sign-up disabled) · Cloudinary for photos.
+**Stack:** Next.js 16 on Vercel · MongoDB Atlas · better-auth (staff phone number + password, no OTP, sign-up disabled) · Cloudinary for photos.
 
 ## Pricing
 
@@ -26,10 +26,10 @@ npm install
 ```
 
 ```bash
-npm run add-staff -- owner@example.com 'a-strong-password' "Owner Name"
+npm run add-staff -- 9876543210 'a-strong-password' "Owner Name"
 ```
 
-The same command resets the password if the email already exists. To remove someone, delete their document from the `user` collection in Atlas.
+Staff sign in at `/admin` with that mobile number and password. The same command resets the password if the number already has a login. To remove someone, delete their document from the `user` collection in Atlas; its email field reads `91<number>@staff.invalid`, an internal key that is never mailed.
 
 ## Deploy (Vercel)
 

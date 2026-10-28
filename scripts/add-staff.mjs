@@ -1,12 +1,14 @@
-// Creates a staff login, or resets the password if the email already exists.
-// Usage: npm run add-staff -- owner@example.com 'a-strong-password' "Owner Name"
+// Creates a staff login, or resets the password if the phone number already has one.
+// Usage: npm run add-staff -- 9876543210 'a-strong-password' "Owner Name"
 import { MongoClient } from "mongodb";
 import { betterAuth } from "better-auth";
 import { mongodbAdapter } from "better-auth/adapters/mongodb";
+import { staffEmail } from "../lib/staff-email.mjs";
 
-const [email, password, name] = process.argv.slice(2);
-if (!email || !password || password.length < 8) {
-  console.error("Usage: npm run add-staff -- <email> <password, 8+ chars> [name]");
+const [phone, password, name] = process.argv.slice(2);
+const email = phone && staffEmail(phone);
+if (!/^91\d{10}@/.test(email ?? "") || !password || password.length < 8) {
+  console.error("Usage: npm run add-staff -- <10-digit mobile> <password, 8+ chars> [name]");
   process.exit(1);
 }
 
@@ -17,12 +19,12 @@ const auth = betterAuth({
 });
 
 const ctx = await auth.$context;
-const found = await ctx.internalAdapter.findUserByEmail(email.toLowerCase());
+const found = await ctx.internalAdapter.findUserByEmail(email);
 if (found) {
   await ctx.internalAdapter.updatePassword(found.user.id, await ctx.password.hash(password));
-  console.log(`Password reset for ${email}`);
+  console.log(`Password reset for +${email.split("@")[0]}`);
 } else {
-  await auth.api.signUpEmail({ body: { email, password, name: name ?? email.split("@")[0] } });
-  console.log(`Staff login created for ${email}`);
+  await auth.api.signUpEmail({ body: { email, password, name: name ?? "Staff" } });
+  console.log(`Staff login created for +${email.split("@")[0]}`);
 }
 await client.close();

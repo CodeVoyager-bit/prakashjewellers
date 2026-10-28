@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { priceOf, rupees } from "./price";
 import { sign } from "./cloudinary";
+import { staffEmail } from "./staff-email.mjs";
 
 test("rate-based price matches weight × rate × 1.10 × 1.03", () => {
   const p = priceOf({ weight: 10, making: null, fixedPrice: null }, 7000)!;
@@ -26,4 +27,9 @@ test("rupees use Indian grouping", () => {
 test("Cloudinary signature matches their documented example", () => {
   const params = { timestamp: 1315060510, public_id: "sample_image", eager: "w_400,h_300,c_pad|w_260,h_200,c_crop" };
   assert.equal(sign(params, "abcd"), "bfd09f95f331f558cbd1320e67aa8d488770583e");
+});
+
+test("staff phone numbers map to one login however they're typed", () => {
+  for (const p of ["9876543210", "+91 98765 43210", "098765-43210", "919876543210"])
+    assert.equal(staffEmail(p), "919876543210@staff.invalid");
 });
