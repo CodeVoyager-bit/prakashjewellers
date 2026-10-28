@@ -592,25 +592,16 @@ body { padding-bottom: calc(var(--tabbar) + env(safe-area-inset-bottom)); }
 .code-search .muted { max-width: 44ch; }
 .code-search .search { max-width: 520px; margin-top: 10px; }
 
-.calc-teaser {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  gap: 16px;
-  align-items: center;
-  padding: 20px;
-  border-radius: var(--r);
-  background: var(--hero-bg);
-  color: var(--hero-ink);
-  text-decoration: none;
-  transition: transform 0.35s var(--ease), box-shadow 0.35s var(--ease);
+/* Home page calculator: intro beside the live calculator on desktop */
+.home-calc { display: grid; gap: 4px; }
+.home-calc-intro { display: grid; justify-items: start; gap: 6px; }
+.home-calc-intro h2 { font-size: clamp(1.625rem, 6vw, 2.375rem); }
+.home-calc-intro .muted { max-width: 46ch; }
+.home-calc-icon { display: grid; place-items: center; width: 52px; height: 52px; margin-bottom: 6px; border-radius: 50%; background: var(--foil); color: var(--foil-ink); box-shadow: 0 10px 24px -14px rgb(0 0 0 / 0.5); }
+@media (min-width: 900px) {
+  .home-calc { grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr); gap: 48px; align-items: center; }
+  .home-calc .calc { margin-top: 0; }
 }
-.calc-teaser:hover { transform: translateY(-3px); box-shadow: var(--shadow-lift); }
-.calc-teaser:hover > svg { animation: nudge 0.8s var(--ease) infinite alternate; }
-.calc-teaser .eyebrow { color: var(--hero-accent); display: block; }
-.calc-teaser .muted { display: block; color: inherit; opacity: 0.85; font-size: 0.9375rem; }
-.calc-teaser-icon { display: grid; place-items: center; width: 56px; height: 56px; border-radius: 50%; background: var(--foil); color: var(--foil-ink); }
-.calc-teaser-text { display: grid; gap: 2px; }
-.calc-teaser-title { display: block; font-family: var(--font-display), Georgia, serif; font-size: clamp(1.25rem, 5vw, 1.75rem); line-height: 1.2; }
 
 .visit-band { display: grid; gap: 18px; align-items: center; padding: 24px 20px; border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); }
 .visit-band h2 { margin-top: 6px; font-size: clamp(1.5rem, 5vw, 2rem); }

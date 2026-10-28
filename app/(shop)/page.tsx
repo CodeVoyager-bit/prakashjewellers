@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowIcon, CalculatorIcon, ChatIcon, ClockIcon, GemIcon, InstagramIcon, PinIcon, TagIcon } from "@/components/icons";
+import { Calculator } from "@/components/calculator";
 import { CollectionTiles, Empty, ItemGrid, Photo, RateTag, SearchForm, SectionHead } from "@/components/shop";
 import { collections, getItems, getSettings } from "@/lib/data";
 
@@ -82,18 +83,19 @@ export default async function Home() {
         )}
       </section>
 
-      <section className="wrap section">
-        <Link href="/calculator" className="calc-teaser reveal">
-          <span className="calc-teaser-icon" aria-hidden="true">
+      <section className="wrap section home-calc reveal" id="calculator" aria-labelledby="calc-title">
+        <div className="home-calc-intro">
+          <span className="home-calc-icon" aria-hidden="true">
             <CalculatorIcon size={28} />
           </span>
-          <span className="calc-teaser-text">
-            <span className="eyebrow">Price calculator</span>
-            <span className="calc-teaser-title">What would 20 g cost today?</span>
-            <span className="muted">See the metal value, making charge and tax for any weight at the store’s rate.</span>
-          </span>
-          <ArrowIcon size={22} />
-        </Link>
+          <p className="eyebrow">Price calculator</p>
+          <h2 id="calc-title">What Would It Cost Today?</h2>
+          <p className="muted">
+            Type a weight to see the metal value, making charge and tax at the store’s published rate. The store confirms the
+            final price when the piece is weighed.
+          </p>
+        </div>
+        <Calculator rates={s.rates} makingPct={s.makingPct} taxPct={s.taxPct} />
       </section>
 
       <section className="wrap section">
