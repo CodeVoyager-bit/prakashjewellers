@@ -87,7 +87,7 @@ export async function saveSettings(fd: FormData) {
     { _id: "shop" },
     {
       $set: {
-        name: text(fd, "name") || "Prakash Jeweller",
+        name: text(fd, "name") || "Prakash Jewellers",
         // Accept a bare 10-digit Indian mobile and add the country code wa.me needs.
         whatsapp: wa.length === 10 ? `91${wa}` : wa,
         phone: text(fd, "phone"),

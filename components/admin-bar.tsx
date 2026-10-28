@@ -1,5 +1,8 @@
+import { headers } from "next/headers";
 import Link from "next/link";
 import { signOut } from "@/app/admin/actions";
+import { auth } from "@/lib/auth";
+import { Monogram } from "./logo";
 
 const LINKS = [
   ["/admin", "Dashboard"],
@@ -7,35 +10,42 @@ const LINKS = [
   ["/admin/products", "Products"],
   ["/admin/enquiries", "Enquiries"],
   ["/admin/settings", "Settings"],
-  ["/admin/guide", "Staff Guide"],
+  ["/admin/guide", "Guide"],
 ] as const;
 
-export function AdminBar({ name, current }: { name: string; current?: string }) {
+// Staff top bar: monogram and store name, tab pills, the signed-in person.
+export async function AdminBar({ name, current }: { name: string; current?: string }) {
+  const session = await auth.api.getSession({ headers: await headers() });
+  const who = session?.user.name || "Staff";
+  const initials = who.split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase();
   return (
     <header className="admin-bar no-print">
-      <div className="wrap admin-bar-row">
-        <Link href="/admin" className="brand">
+      <div className="admin-bar-row">
+        <Link href="/admin" className="admin-brand" aria-label={`${name}, staff dashboard`}>
+          <Monogram size={30} />
           <span translate="no">{name}</span>
-          <span className="staff-tag">Staff</span>
         </Link>
-        <div className="admin-bar-end">
+        <nav className="admin-nav" aria-label="Staff">
+          {LINKS.map(([href, label]) => (
+            <Link key={href} href={href} aria-current={current === href ? "page" : undefined}>
+              {label}
+            </Link>
+          ))}
+        </nav>
+        <div className="admin-user">
           <Link href="/" className="admin-link">
             View Site
           </Link>
+          <span className="avatar" title={who} aria-label={`Signed in as ${who}`}>
+            {initials}
+          </span>
           <form action={signOut}>
-            <button type="submit" className="linkish">
+            <button type="submit" className="admin-link">
               Sign Out
             </button>
           </form>
         </div>
       </div>
-      <nav className="wrap admin-nav" aria-label="Staff">
-        {LINKS.map(([href, label]) => (
-          <Link key={href} href={href} aria-current={current === href ? "page" : undefined}>
-            {label}
-          </Link>
-        ))}
-      </nav>
     </header>
   );
 }

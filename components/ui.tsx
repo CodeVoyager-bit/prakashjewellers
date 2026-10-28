@@ -32,24 +32,27 @@ export function TrackVisit() {
 
 export const reducedMotion = () => typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-// Rolls a rupee figure from its previous value to the new one; renders the final value on the server.
-export function CountUp({ value, format = rupees }: { value: number; format?: (n: number) => string }) {
+// Rolls a figure from its previous value (or `from`, on first show) to the new one.
+// The server renders the final value; the roll is an enhancement, skipped under reduced motion.
+const formats = { rupees, number: (n: number) => n.toLocaleString("en-IN") };
+export function CountUp({ value, kind = "rupees", from }: { value: number; kind?: keyof typeof formats; from?: number }) {
   const el = useRef<HTMLSpanElement>(null);
-  const prev = useRef(value);
+  const prev = useRef(from ?? value);
   useEffect(() => {
-    const from = prev.current;
+    const format = formats[kind];
+    const start0 = prev.current;
     prev.current = value;
     const node = el.current;
-    if (!node || from === value || reducedMotion()) return;
+    if (!node || start0 === value || reducedMotion()) return;
     const start = performance.now();
     let frame = requestAnimationFrame(function tick(t) {
-      const k = Math.min(1, (t - start) / 600);
-      node.textContent = format(Math.round(from + (value - from) * (1 - (1 - k) ** 3)));
+      const k = Math.min(1, (t - start) / 900);
+      node.textContent = format(Math.round(start0 + (value - start0) * (1 - (1 - k) ** 3)));
       if (k < 1) frame = requestAnimationFrame(tick);
     });
     return () => cancelAnimationFrame(frame);
-  }, [value, format]);
-  return <span ref={el}>{format(value)}</span>;
+  }, [value, kind]);
+  return <span ref={el}>{formats[kind](value)}</span>;
 }
 
 // Bottom sheet on phones, centred panel on desktop. Native <dialog>: focus trap, Esc and backdrop close.

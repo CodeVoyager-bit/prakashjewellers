@@ -9,33 +9,105 @@ import type { Item } from "@/lib/data";
 import { DETAILS, ENQUIRY_STATUSES, STATUSES, type EnquiryStatus, type Status } from "@/lib/fields";
 import { formatDayTime, isToday, perGram, priceOf, rupees, type Rate } from "@/lib/price";
 import { staffEmail } from "@/lib/staff-email.mjs";
-import { BackIcon, CloseIcon, CopyIcon, MinusIcon, PlusIcon, SearchIcon } from "./icons";
+import { BackIcon, CloseIcon, CopyIcon, EyeIcon, EyeOffIcon, MinusIcon, PlusIcon, SearchIcon } from "./icons";
 import { Photo } from "./photo";
 
+// Keeps only the 10-digit mobile: letters never appear, and "+91 98765 43210" or "098765…" paste cleanly.
+const mobile = (v: string) => {
+  let d = v.replace(/\D/g, "");
+  if (d.length > 10 && d.startsWith("91")) d = d.slice(2);
+  if (d.length > 10 && d.startsWith("0")) d = d.slice(1);
+  return d.slice(0, 10);
+};
+
 export function LoginForm() {
+  const [phone, setPhone] = useState("");
+  const [password, setPassword] = useState("");
+  const [show, setShow] = useState(false);
+  const [caps, setCaps] = useState(false);
+  const [touched, setTouched] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const router = useRouter();
+  const phoneError = !touched || /^[6-9]\d{9}$/.test(phone) ? "" : phone.length < 10 ? "Enter the 10-digit mobile number." : "Indian mobile numbers start with 6, 7, 8 or 9.";
 
-  async function login(fd: FormData) {
-    setBusy(true);
+  async function submit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setTouched(true);
     setError("");
-    const { error } = await authClient.signIn.email({ email: staffEmail(fd.get("phone")), password: String(fd.get("password")) });
-    if (!error) return router.replace("/admin");
-    setError(error.status === 429 ? "Too many attempts. Wait a minute, then try again." : "That phone number and password don’t match a staff login.");
+    if (!/^[6-9]\d{9}$/.test(phone)) return document.getElementById("phone")?.focus();
+    if (!password) {
+      setError("Enter your password.");
+      return document.getElementById("password")?.focus();
+    }
+    setBusy(true);
+    try {
+      const { error } = await authClient.signIn.email({ email: staffEmail(phone), password });
+      if (!error) return router.replace("/admin");
+      setError(error.status === 429 ? "Too many attempts. Wait a minute, then try again." : "That mobile number and password don’t match a staff login.");
+    } catch {
+      setError("Couldn’t reach the server. Check your connection and try again.");
+    }
     setBusy(false);
   }
 
+  const capsCheck = (e: React.KeyboardEvent) => setCaps(e.getModifierState("CapsLock"));
+
   return (
     // onSubmit, not action: a form action resets the fields, which would clear the number on a typo.
-    <form onSubmit={(e) => (e.preventDefault(), login(new FormData(e.currentTarget)))} className="form-grid">
+    <form onSubmit={submit} noValidate className="login-form">
       <div className="field">
-        <label htmlFor="phone">Phone number</label>
-        <input id="phone" name="phone" type="tel" inputMode="tel" autoComplete="username" placeholder="98765 43210…" required />
+        <label htmlFor="phone">Mobile number</label>
+        <div className={`affix-field${phoneError ? " is-invalid" : ""}`}>
+          <span className="affix" aria-hidden="true">
+            +91
+          </span>
+          <input
+            id="phone"
+            name="phone"
+            type="tel"
+            inputMode="numeric"
+            autoComplete="username"
+            maxLength={10}
+            placeholder="98765 43210"
+            value={phone}
+            onChange={(e) => setPhone(mobile(e.target.value))}
+            onBlur={() => phone && setTouched(true)}
+            aria-invalid={!!phoneError}
+            aria-describedby={phoneError ? "phone-error" : undefined}
+            required
+          />
+        </div>
+        {phoneError && (
+          <p id="phone-error" className="field-error" role="alert">
+            {phoneError}
+          </p>
+        )}
       </div>
       <div className="field">
         <label htmlFor="password">Password</label>
-        <input id="password" name="password" type="password" autoComplete="current-password" required />
+        <div className="affix-field">
+          <input
+            id="password"
+            name="password"
+            type={show ? "text" : "password"}
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            onKeyDown={capsCheck}
+            onKeyUp={capsCheck}
+            aria-describedby={caps ? "caps-hint" : undefined}
+            required
+          />
+          <button type="button" className="affix-btn" aria-label={show ? "Hide password" : "Show password"} aria-pressed={show} onClick={() => setShow(!show)}>
+            {show ? <EyeOffIcon size={20} /> : <EyeIcon size={20} />}
+          </button>
+        </div>
+        {caps && (
+          <p id="caps-hint" className="help">
+            Caps Lock is on.
+          </p>
+        )}
       </div>
       {error && (
         <p className="error" role="alert">
@@ -43,7 +115,13 @@ export function LoginForm() {
         </p>
       )}
       <button type="submit" className="btn btn-primary btn-block" disabled={busy}>
-        {busy ? "Signing In…" : "Sign In"}
+        {busy ? (
+          <>
+            <span className="spinner spinner-light" aria-hidden="true" /> Signing In…
+          </>
+        ) : (
+          "Sign In"
+        )}
       </button>
     </form>
   );

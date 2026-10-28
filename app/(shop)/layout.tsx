@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { CartLink, CartToast, TabNav } from "@/components/cart";
 import { InstagramIcon, SearchIcon } from "@/components/icons";
+import { Logo } from "@/components/logo";
 import { RateBar } from "@/components/shop";
 import { TrackVisit } from "@/components/ui";
 import { getSettings } from "@/lib/data";
@@ -20,8 +21,8 @@ export default async function ShopLayout({ children }: { children: React.ReactNo
           <Link href="/collections#q" className="icon-btn head-search" aria-label="Search by name or design code">
             <SearchIcon size={20} />
           </Link>
-          <Link href="/" className="wordmark" translate="no">
-            {s.name}
+          <Link href="/" className="brandmark" aria-label={`${s.name}, home`} translate="no">
+            <Logo compact />
           </Link>
           <CartLink />
           <TabNav />
@@ -33,10 +34,7 @@ export default async function ShopLayout({ children }: { children: React.ReactNo
         <div className="wrap">
           <div className="foot-grid">
             <div className="foot-col foot-brand">
-              <p className="wordmark foot-mark" translate="no">
-                {s.name}
-              </p>
-              <p>Traditional gold jewellery, each piece weighed and priced individually.</p>
+              <Logo light />
             </div>
             <nav className="foot-col" aria-label="Explore">
               <p className="foot-head">Explore</p>
@@ -61,10 +59,15 @@ export default async function ShopLayout({ children }: { children: React.ReactNo
               )}
             </div>
           </div>
-          <p className="foot-fine">
-            Prices are estimates from the store’s published gold rate, making charge and tax settings. Final price and
-            availability will be confirmed by the store. No online payment or order is taken on this site.
-          </p>
+          <div className="foot-bottom">
+            <p className="foot-fine">
+              Prices are estimates from the store’s published gold rate, making charge and tax settings. Final price and
+              availability will be confirmed by the store. No online payment or order is taken on this site.
+            </p>
+            <Link href="/admin/login" className="foot-staff">
+              Staff Login
+            </Link>
+          </div>
         </div>
       </footer>
     </>

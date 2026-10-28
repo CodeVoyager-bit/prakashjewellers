@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Bodoni_Moda, Jost } from "next/font/google";
+import { Bodoni_Moda, Cinzel, Jost } from "next/font/google";
 import { getSettings } from "@/lib/data";
 import { THEME_COLORS } from "@/lib/fields";
 import "./globals.css";
@@ -9,6 +9,8 @@ export const dynamic = "force-dynamic";
 
 const display = Bodoni_Moda({ subsets: ["latin"], variable: "--font-display", display: "swap" });
 const sans = Jost({ subsets: ["latin"], variable: "--font-sans", display: "swap" });
+// Roman capitals for the logo lockup only, matching the store's artwork.
+const logo = Cinzel({ subsets: ["latin"], weight: ["500", "600"], variable: "--font-logo", display: "swap" });
 
 export async function generateMetadata(): Promise<Metadata> {
   const s = await getSettings();
@@ -30,7 +32,7 @@ const inlineScript = `try{var t=new URLSearchParams(location.search).get("theme"
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const s = await getSettings();
   return (
-    <html lang="en-IN" data-theme={s.theme} className={`${display.variable} ${sans.variable}`} suppressHydrationWarning>
+    <html lang="en-IN" data-theme={s.theme} className={`${display.variable} ${sans.variable} ${logo.variable}`} suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://res.cloudinary.com" />
         <script dangerouslySetInnerHTML={{ __html: inlineScript }} />

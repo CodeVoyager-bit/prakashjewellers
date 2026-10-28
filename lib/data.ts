@@ -67,7 +67,7 @@ export const statsDb = db.collection<StatDoc>("stats");
 
 const DEFAULT_RATE: Rate = { key: "22k", label: "22K gold", perGram: 0, updatedAt: null, updatedBy: "" };
 const DEFAULTS: Settings = {
-  name: "Prakash Jeweller",
+  name: "Prakash Jewellers",
   whatsapp: "",
   phone: "",
   address: "",
