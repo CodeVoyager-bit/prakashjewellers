@@ -35,6 +35,8 @@ Staff sign in at `/admin` with that mobile number and password. The same command
 
 Import the GitHub repo in Vercel, add the six variables from `.env.example` (with `BETTER_AUTH_URL` set to the `https://….vercel.app` address), and deploy. Every push to `main` redeploys.
 
+`vercel.json` runs the server in Mumbai (`bom1`), next to the Atlas cluster in AWS `ap-south-1`, and adds basic security headers. If the cluster ever moves region, change `regions` to match.
+
 ## Daily use (owner)
 
 - `/admin` → **Today's 22K Gold Rate** → Update Rate. Every price on the site follows this number; the box warns when it wasn't updated today.
