@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "test": "tsx --test lib/*.test.ts",
-    "add-staff": "node --env-file=.env.local scripts/add-staff.mjs"
+    "add-staff": "node --env-file=.env.local scripts/add-staff.mjs",
+    "demo:add": "node --env-file=.env.local scripts/demo-data.mjs add",
+    "demo:remove": "node --env-file=.env.local scripts/demo-data.mjs remove"
   },
   "dependencies": {
     "better-auth": "^1.7.14",

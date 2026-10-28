@@ -4,7 +4,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { auth, requireStaff } from "@/lib/auth";
-import { sign } from "@/lib/cloudinary";
+import { sign } from "@/lib/cloudinary.mjs";
 import { itemsDb, oid, settingsDb, THEMES, type Theme } from "@/lib/data";
 
 const text = (fd: FormData, k: string, max = 200) => String(fd.get(k) ?? "").trim().slice(0, max);

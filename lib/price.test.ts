@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { priceOf, rupees } from "./price";
-import { sign } from "./cloudinary";
+import { sign } from "./cloudinary.mjs";
 import { staffEmail } from "./staff-email.mjs";
 
 test("rate-based price matches weight × rate × 1.10 × 1.03", () => {

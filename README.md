@@ -45,6 +45,10 @@ Import the GitHub repo in Vercel, add the six variables from `.env.example` (wit
 - **Counter QR** prints a card that opens the site, for walk-in customers.
 - **Shop Details** sets the WhatsApp number, phone, address and colour theme. Preview a theme first with `?theme=green` (or `black`, `white`, `red`) on any page.
 
+## Demo data
+
+`npm run demo:add` loads 7 sample pieces with free Unsplash photos, and sets a sample rate if none is set. **Run `npm run demo:remove` before go-live.** It deletes every sample item (even ones edited in admin), its photos and any enquiries for it, and leaves the shop's own items alone.
+
 ## Development
 
 ```bash
