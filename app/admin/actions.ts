@@ -5,7 +5,9 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { auth, requireStaff } from "@/lib/auth";
 import { sign } from "@/lib/cloudinary.mjs";
-import { itemsDb, oid, settingsDb, THEMES, type Theme } from "@/lib/data";
+import { nextCode } from "@/lib/codes.mjs";
+import { db } from "@/lib/db";
+import { DETAILS, isTheme, itemsDb, oid, settingsDb, type DetailKey } from "@/lib/data";
 
 const text = (fd: FormData, k: string, max = 200) => String(fd.get(k) ?? "").trim().slice(0, max);
 const num = (fd: FormData, k: string) => {
@@ -26,17 +28,18 @@ export async function saveSettings(fd: FormData) {
   await requireStaff();
   const digits = (k: string) => text(fd, k).replace(/\D/g, "");
   const wa = digits("whatsapp");
-  const theme = text(fd, "theme") as Theme;
+  const theme = text(fd, "theme");
   await settingsDb.updateOne(
     { _id: "shop" },
     {
       $set: {
-        name: text(fd, "name") || "Prakash Jewellers",
+        name: text(fd, "name") || "Prakash Jeweller",
         // Accept a bare 10-digit Indian mobile and add the country code wa.me needs.
         whatsapp: wa.length === 10 ? `91${wa}` : wa,
         phone: text(fd, "phone"),
         address: text(fd, "address", 300),
-        theme: THEMES.includes(theme) ? theme : "red",
+        instagram: text(fd, "instagram", 60).replace(/^@|^https?:\/\/(www\.)?instagram\.com\//, "").replace(/\/.*$/, ""),
+        theme: isTheme(theme) ? theme : "profile",
       },
     },
     { upsert: true },
@@ -65,15 +68,18 @@ export async function saveItem(_: unknown, fd: FormData): Promise<string> {
     making,
     qty: Math.max(0, Math.floor(qty)),
     photos,
+    ...(Object.fromEntries(Object.keys(DETAILS).map((k) => [k, text(fd, k, 120)])) as Record<DetailKey, string>),
   };
+  const code = text(fd, "code", 20).toUpperCase();
   if (!item.name) return "Enter the item name.";
   if (!(weight > 0) && !item.fixedPrice) return "Enter the weight in grams, or a fixed price.";
   if ([weight, fixedPrice, making, qty].some((n) => n !== null && (!Number.isFinite(n) || n < 0)))
     return "Weight, prices and quantity can't be negative.";
+  if (code && !/^[A-Z0-9-]+$/.test(code)) return "Design codes use letters, numbers and dashes only, like PJ-024.";
 
   const _id = oid(text(fd, "id"));
-  if (_id) await itemsDb.updateOne({ _id }, { $set: item });
-  else await itemsDb.insertOne({ ...item, views: 0, enquiries: 0, createdAt: new Date() });
+  if (_id) await itemsDb.updateOne({ _id }, { $set: { ...item, ...(code && { code }) } });
+  else await itemsDb.insertOne({ ...item, code: code || (await nextCode(db)), views: 0, enquiries: 0, createdAt: new Date() });
   done();
   redirect("/admin");
 }

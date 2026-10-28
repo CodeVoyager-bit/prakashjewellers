@@ -16,11 +16,11 @@ export async function getQuote(ids: string[]) {
 // Records the enquiry (for the owner's analytics) and returns the WhatsApp link to open.
 export async function sendEnquiry(ids: string[]): Promise<{ url: string } | { error: string }> {
   const [q, s] = await Promise.all([getQuote(ids), getSettings()]);
-  if (!q.lines.length) return { error: "Your enquiry list is empty. Add a piece first." };
+  if (!q.lines.length) return { error: "Nothing to enquire about yet. Save a piece first." };
   if (!s.whatsapp) return { error: "WhatsApp enquiries aren't set up yet. Please call the shop instead." };
 
   const { insertedId } = await enquiriesDb.insertOne({
-    items: q.lines.map((l) => ({ id: l.id, name: l.name, weight: l.weight, total: l.price?.total ?? null })),
+    items: q.lines.map((l) => ({ id: l.id, code: l.code, name: l.name, weight: l.weight, total: l.price?.total ?? null })),
     total: q.total,
     rate: q.rate,
     createdAt: new Date(),
@@ -32,7 +32,7 @@ export async function sendEnquiry(ids: string[]): Promise<{ url: string } | { er
     `Namaste ${s.name}, I'd like a quotation for:`,
     "",
     ...q.lines.flatMap((l, i) => [
-      `${i + 1}. ${l.name}${l.weight ? ` (${l.weight} g)` : ""}`,
+      `${i + 1}. ${[l.name, l.code, l.weight ? `${l.weight} g` : ""].filter(Boolean).join(" · ")}`,
       `   ${l.price ? rupees(l.price.total) : "Price on request"}`,
       `   ${origin}/item/${l.id}`,
     ]),

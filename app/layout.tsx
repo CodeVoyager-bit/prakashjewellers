@@ -9,7 +9,8 @@ export const dynamic = "force-dynamic";
 const display = Bodoni_Moda({ subsets: ["latin"], variable: "--font-display", display: "swap" });
 const sans = Jost({ subsets: ["latin"], variable: "--font-sans", display: "swap" });
 
-const HEADER: Record<Theme, string> = { red: "#4A0A12", green: "#08332A", black: "#0F0D0B", white: "#FBF7F1" };
+// Browser chrome colour: each theme's header surface.
+const HEADER: Record<Theme, string> = { profile: "#FFFDF8", rose: "#FFF8F6", emerald: "#FBF7EC", maroon: "#FFFFFF" };
 
 export async function generateMetadata(): Promise<Metadata> {
   const s = await getSettings();
@@ -23,7 +24,7 @@ export async function generateViewport(): Promise<Viewport> {
   return { themeColor: HEADER[(await getSettings()).theme] };
 }
 
-// Preview another colour theme before switching it in admin: open any page with ?theme=green.
+// Preview another theme before switching it in admin: open any page with ?theme=rose (or emerald, maroon, profile).
 const previewTheme = `try{var t=new URLSearchParams(location.search).get("theme")||sessionStorage.getItem("theme");if(t){sessionStorage.setItem("theme",t);document.documentElement.dataset.theme=t}}catch(e){}`;
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

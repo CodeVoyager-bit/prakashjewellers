@@ -1,6 +1,8 @@
-# Prakash Jewellers
+# Prakash Jeweller
 
-Catalogue and WhatsApp enquiry site for a jewellery shop. Every price is worked out live from the day's 22K gold rate, which the owner updates once a day. Customers add pieces to an enquiry and send it to the shop's WhatsApp; there is no customer login and no online payment. Staff manage everything at `/admin`.
+Mobile-first catalogue and WhatsApp enquiry site for a jewellery shop, styled after the design lookbook. Every price is worked out live from the day's 22K gold rate, which the owner updates once a day. Customers heart pieces into **Saved** and send them to the shop's WhatsApp in one message, or enquire about a single piece from its page; there is no customer login and no online payment. Staff manage everything at `/admin`.
+
+Pages: Home (`/`), Collections (`/collections`, with category tabs and search by name or design code), a page per piece (`/item/…`, gallery, price breakdown, details table), Saved (`/saved`) and Contact (`/visit`). On phones these sit behind a bottom tab bar.
 
 **Stack:** Next.js 16 on Vercel · MongoDB Atlas · better-auth (staff phone number + password, no OTP, sign-up disabled) · Cloudinary for photos.
 
@@ -40,14 +42,15 @@ Import the GitHub repo in Vercel, add the six variables from `.env.example` (wit
 ## Daily use (owner)
 
 - `/admin` → **Today's 22K Gold Rate** → Update Rate. Every price on the site follows this number; the box warns when it wasn't updated today.
-- **Add Item** with photos, weight and quantity. After a sale, tap − on the item. At 0 the piece shows as "Made to order".
+- **Add Item** with photos, weight and quantity. Each piece gets the next design code (PJ-001, PJ-002 …) unless you type one, e.g. the code from an Instagram post; customers can search either. Optional details (metal, stones, finish, occasion, set includes) fill the piece's details table.
+- After a sale, tap − on the item. At 0 the piece shows as "Made to order".
 - Items are listed most-enquired first, with view and enquiry counts. Recent enquiries are listed below.
 - **Counter QR** prints a card that opens the site, for walk-in customers.
-- **Shop Details** sets the WhatsApp number, phone, address and colour theme. Preview a theme first with `?theme=green` (or `black`, `white`, `red`) on any page.
+- **Shop Details** sets the WhatsApp number, phone, address, Instagram handle and theme. The four themes come from the lookbook: Profile (ivory, green and gold; the default), Rose & Pearl, Emerald Art Deco and Maroon velvet. Preview one first by adding `?theme=rose` (or `emerald`, `maroon`, `profile`) to any page address.
 
 ## Demo data
 
-`npm run demo:add` loads 7 sample pieces with free Unsplash photos, and sets a sample rate if none is set. **Run `npm run demo:remove` before go-live.** It deletes every sample item (even ones edited in admin), its photos and any enquiries for it, and leaves the shop's own items alone.
+`npm run demo:add` loads 7 sample pieces with free Unsplash photos, and sets a sample rate if none is set. **Run `npm run demo:remove` before go-live.** It deletes every sample item (even ones edited in admin), its photos and any enquiries for it, and leaves the shop's own items alone. If no other items remain, design codes start again at PJ-001.
 
 ## Development
 
@@ -59,4 +62,4 @@ npm run dev
 npm test
 ```
 
-`npm test` checks the pricing formula and the Cloudinary upload signature.
+`npm test` checks the pricing formula, the Cloudinary upload signature and phone-number logins.

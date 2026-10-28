@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { priceOf, rupees } from "./price";
 import { sign } from "./cloudinary.mjs";
 import { staffEmail } from "./staff-email.mjs";
+import { codePattern } from "./codes.mjs";
 
 test("rate-based price matches weight × rate × 1.10 × 1.03", () => {
   const p = priceOf({ weight: 10, making: null, fixedPrice: null }, 7000)!;
@@ -32,4 +33,10 @@ test("Cloudinary signature matches their documented example", () => {
 test("staff phone numbers map to one login however they're typed", () => {
   for (const p of ["9876543210", "+91 98765 43210", "098765-43210", "919876543210"])
     assert.equal(staffEmail(p), "919876543210@staff.invalid");
+});
+
+test("design-code search ignores case and separators but not digits", () => {
+  for (const q of ["PJ-024", "pj024", "PJ 024", "024"]) assert.ok(codePattern(q)!.test("PJ-024"), q);
+  assert.equal(codePattern("PJ-025")!.test("PJ-024"), false);
+  assert.equal(codePattern("--"), null);
 });

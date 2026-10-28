@@ -5,9 +5,10 @@ import { useState, useTransition, type FormEvent } from "react";
 import { saveItem, uploadSignature } from "@/app/admin/actions";
 import { authClient } from "@/lib/auth-client";
 import type { Item } from "@/lib/data";
+import { DETAILS } from "@/lib/fields";
 import { staffEmail } from "@/lib/staff-email.mjs";
 import { CloseIcon, PlusIcon } from "./icons";
-import { Photo } from "./shop";
+import { Photo } from "./photo";
 
 export function LoginForm() {
   const [error, setError] = useState("");
@@ -45,6 +46,8 @@ export function LoginForm() {
     </form>
   );
 }
+
+const PLACEHOLDERS = { metal: "22K gold…", stones: "Kundan, pearls…", finish: "Antique…", occasion: "Wedding, festive…", includes: "Necklace and earrings…" };
 
 export function ItemForm({ item, categories }: { item: Item | null; categories: string[] }) {
   const [error, setError] = useState("");
@@ -105,14 +108,14 @@ export function ItemForm({ item, categories }: { item: Item | null; categories: 
           </datalist>
         </div>
         <div className="field">
-          <label htmlFor="qty">Quantity available *</label>
-          <input id="qty" name="qty" type="number" inputMode="numeric" min="0" step="1" required defaultValue={v(item?.qty ?? 1)} />
-          <p className="help">Set 0 when sold out. It then shows as “Made to order”.</p>
+          <label htmlFor="code">Design code</label>
+          <input id="code" name="code" defaultValue={item?.code} autoComplete="off" spellCheck={false} placeholder="Automatic…" />
+          <p className="help">Leave empty for the next code (PJ-001, PJ-002…). Use the code from your Instagram post if it has one.</p>
         </div>
       </div>
 
       <fieldset className="form-grid">
-        <legend>Price</legend>
+        <legend>Price &amp; stock</legend>
         <div className="form-grid two">
           <div className="field">
             <label htmlFor="weight">Weight (grams)</label>
@@ -124,11 +127,29 @@ export function ItemForm({ item, categories }: { item: Item | null; categories: 
             <input id="making" name="making" type="number" inputMode="decimal" min="0" max="100" step="0.1" defaultValue={v(item?.making)} placeholder="10" />
             <p className="help">Leave empty for the usual 10%.</p>
           </div>
+          <div className="field">
+            <label htmlFor="fixedPrice">Fixed price (₹, optional)</label>
+            <input id="fixedPrice" name="fixedPrice" type="number" inputMode="numeric" min="0" step="1" defaultValue={v(item?.fixedPrice)} />
+            <p className="help">Only for pieces sold at a set price. It replaces the rate calculation and includes GST.</p>
+          </div>
+          <div className="field">
+            <label htmlFor="qty">Quantity available *</label>
+            <input id="qty" name="qty" type="number" inputMode="numeric" min="0" step="1" required defaultValue={v(item?.qty ?? 1)} />
+            <p className="help">Set 0 when sold out. It then shows as “Made to order”.</p>
+          </div>
         </div>
-        <div className="field">
-          <label htmlFor="fixedPrice">Fixed price (₹, optional)</label>
-          <input id="fixedPrice" name="fixedPrice" type="number" inputMode="numeric" min="0" step="1" defaultValue={v(item?.fixedPrice)} />
-          <p className="help">Only for pieces sold at a set price. It replaces the rate calculation and includes GST.</p>
+      </fieldset>
+
+      <fieldset className="form-grid">
+        <legend>Details (optional)</legend>
+        <p className="help">Shown in the details table on the piece’s page. Empty rows are hidden.</p>
+        <div className="form-grid two">
+          {Object.entries(DETAILS).map(([k, label]) => (
+            <div className="field" key={k}>
+              <label htmlFor={k}>{label}</label>
+              <input id={k} name={k} defaultValue={item?.[k as keyof typeof DETAILS]} autoComplete="off" placeholder={PLACEHOLDERS[k as keyof typeof DETAILS]} />
+            </div>
+          ))}
         </div>
       </fieldset>
 

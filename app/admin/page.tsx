@@ -71,7 +71,7 @@ export default async function AdminPage() {
                         {it.name}
                       </Link>
                       <p className="card-meta">
-                        {[it.category, it.weight ? `${it.weight} g` : "", p ? rupees(p.total) : "Price on request"].filter(Boolean).join(" · ")}
+                        {[it.code, it.category, it.weight ? `${it.weight} g` : "", p ? rupees(p.total) : "Price on request"].filter(Boolean).join(" · ")}
                       </p>
                       <p className="card-meta">
                         {count(it.views, "view")} · {it.enquiries === 1 ? "1 enquiry" : `${it.enquiries} enquiries`}
@@ -142,17 +142,27 @@ export default async function AdminPage() {
               <textarea id="address" name="address" rows={2} defaultValue={s.address} autoComplete="off" />
             </div>
             <div className="field">
+              <label htmlFor="instagram">Instagram handle</label>
+              <input id="instagram" name="instagram" defaultValue={s.instagram} autoComplete="off" spellCheck={false} placeholder="prakashjeweller…" />
+              <p className="help">Shown on the Contact page and footer.</p>
+            </div>
+            <div className="field">
               <label htmlFor="theme">Colour theme</label>
               <select id="theme" name="theme" defaultValue={s.theme}>
-                {THEMES.map((t) => (
-                  <option key={t} value={t}>
-                    {t[0].toUpperCase() + t.slice(1)}
+                {Object.entries(THEMES).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
                   </option>
                 ))}
               </select>
               <p className="help">
-                Preview first: <Link href="/?theme=green">green</Link>, <Link href="/?theme=black">black</Link>,{" "}
-                <Link href="/?theme=white">white</Link>, <Link href="/?theme=red">red</Link>.
+                Preview before switching:{" "}
+                {Object.entries(THEMES).map(([value, label], i) => (
+                  <span key={value}>
+                    {i > 0 && " · "}
+                    <Link href={`/?theme=${value}`}>{label.split(":")[0]}</Link>
+                  </span>
+                ))}
               </p>
             </div>
             <Submit>Save Details</Submit>
