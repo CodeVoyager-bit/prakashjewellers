@@ -1,4 +1,4 @@
-// Creates a staff login, or resets the password if the phone number already has one.
+// Creates an owner login (no role = owner), or resets the password if the phone number already has one.
 // Usage: npm run add-staff -- 9876543210 'a-strong-password' "Owner Name"
 import { MongoClient } from "mongodb";
 import { betterAuth } from "better-auth";

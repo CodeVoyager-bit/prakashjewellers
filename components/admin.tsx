@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition, type FormEvent } from "react";
-import { duplicateItem, markSold, saveItem, saveRates, setEnquiryStatus, setQty, setStatus, uploadSignature } from "@/app/admin/actions";
+import { addStaff, duplicateItem, markSold, removeStaff, resetStaffPassword, saveItem, saveRates, setEnquiryStatus, setQty, setStatus, uploadSignature } from "@/app/admin/actions";
 import { authClient } from "@/lib/auth-client";
 import type { Item } from "@/lib/data";
 import { CATEGORIES, DETAILS, ENQUIRY_STATUSES, STATUSES, type EnquiryStatus, type Status } from "@/lib/fields";
@@ -13,6 +13,7 @@ import { BackIcon, CloseIcon, CopyIcon, EyeIcon, EyeOffIcon, MinusIcon, PlusIcon
 import { Photo } from "./photo";
 
 // Keeps only the 10-digit mobile: letters never appear, and "+91 98765 43210" or "098765…" paste cleanly.
+// No maxLength on these fields: the browser would cut a pasted "+91 …" short before this could clean it.
 const mobile = (v: string) => {
   let d = v.replace(/\D/g, "");
   if (d.length > 10 && d.startsWith("91")) d = d.slice(2);
@@ -68,7 +69,6 @@ export function LoginForm() {
             type="tel"
             inputMode="numeric"
             autoComplete="username"
-            maxLength={10}
             placeholder="98765 43210"
             value={phone}
             onChange={(e) => setPhone(mobile(e.target.value))}
@@ -124,6 +124,157 @@ export function LoginForm() {
         )}
       </button>
     </form>
+  );
+}
+
+// Easy to read out or send on WhatsApp: no 0/O or 1/l/I lookalikes.
+const suggestPassword = () => {
+  const chars = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  return Array.from(crypto.getRandomValues(new Uint32Array(10)), (x) => chars[x % chars.length]).join("");
+};
+
+function NewPassword({ id, value, onChange }: { id: string; value: string; onChange: (v: string) => void }) {
+  const [show, setShow] = useState(false);
+  return (
+    <>
+      <div className="affix-field">
+        <input id={id} name="password" type={show ? "text" : "password"} autoComplete="new-password" minLength={8} maxLength={128} spellCheck={false} value={value} onChange={(e) => onChange(e.target.value)} required />
+        <button type="button" className="affix-btn" aria-label={show ? "Hide password" : "Show password"} aria-pressed={show} onClick={() => setShow(!show)}>
+          {show ? <EyeOffIcon size={20} /> : <EyeIcon size={20} />}
+        </button>
+      </div>
+      <p className="help">
+        At least 8 characters.{" "}
+        <button type="button" className="inline-link" onClick={() => (onChange(suggestPassword()), setShow(true))}>
+          Suggest one
+        </button>
+      </p>
+    </>
+  );
+}
+
+type Note = { ok: boolean; text: string } | null;
+const NoteLine = ({ note }: { note: Note }) =>
+  note && (
+    <p className={note.ok ? "notice notice-info" : "error"} role={note.ok ? "status" : "alert"}>
+      {note.text}
+    </p>
+  );
+
+export function AddStaffForm() {
+  const [phone, setPhone] = useState("");
+  const [password, setPassword] = useState("");
+  const [note, setNote] = useState<Note>(null);
+  const [saving, start] = useTransition();
+
+  function submit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const fd = new FormData(form);
+    start(async () => {
+      const error = await addStaff(fd);
+      if (error) return setNote({ ok: false, text: error });
+      // Shown once so the owner can pass it on; it isn't stored anywhere readable.
+      setNote({ ok: true, text: `Login created for ${fd.get("name")}: +91 ${phone.slice(0, 5)} ${phone.slice(5)}, password ${password}. Send them these to sign in at Staff Login.` });
+      form.reset();
+      setPhone("");
+      setPassword("");
+    });
+  }
+
+  return (
+    <form onSubmit={submit} className="form-grid">
+      <div className="form-grid two">
+        <div className="field">
+          <label htmlFor="staff-name">Name</label>
+          <input id="staff-name" name="name" maxLength={60} autoComplete="off" placeholder="Priya Patil" required />
+        </div>
+        <div className="field">
+          <label htmlFor="staff-phone">Mobile number</label>
+          <div className="affix-field">
+            <span className="affix" aria-hidden="true">
+              +91
+            </span>
+            <input
+              id="staff-phone"
+              name="phone"
+              type="tel"
+              inputMode="numeric"
+              autoComplete="off"
+              pattern="[6-9][0-9]{9}"
+              title="A 10-digit mobile number starting with 6, 7, 8 or 9"
+              placeholder="98765 43210"
+              value={phone}
+              onChange={(e) => setPhone(mobile(e.target.value))}
+              required
+            />
+          </div>
+        </div>
+      </div>
+      <div className="field">
+        <label htmlFor="staff-password">Password</label>
+        <NewPassword id="staff-password" value={password} onChange={setPassword} />
+      </div>
+      <label className="check-row">
+        <input type="checkbox" name="owner" /> Owner: can also add and remove staff logins
+      </label>
+      <NoteLine note={note} />
+      <button type="submit" className="btn btn-primary" disabled={saving}>
+        {saving ? "Adding…" : "Add Staff Login"}
+      </button>
+    </form>
+  );
+}
+
+export function StaffActions({ id, name, me }: { id: string; name: string; me: boolean }) {
+  const [open, setOpen] = useState(false);
+  const [password, setPassword] = useState("");
+  const [note, setNote] = useState<Note>(null);
+  const [busy, start] = useTransition();
+
+  function reset(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    start(async () => {
+      const error = await resetStaffPassword(id, password);
+      if (error) return setNote({ ok: false, text: error });
+      setNote({ ok: true, text: `New password for ${name}: ${password}.${me ? "" : " They’ve been signed out and must sign in with it."}` });
+      setOpen(false);
+      setPassword("");
+    });
+  }
+  function remove() {
+    if (!confirm(`Remove ${name}’s login? They’ll be signed out and won’t be able to sign in again.`)) return;
+    start(async () => {
+      const error = await removeStaff(id);
+      if (error) setNote({ ok: false, text: error });
+    });
+  }
+
+  return (
+    <div className="staff-actions">
+      <div className="row-actions">
+        <button type="button" className="btn btn-quiet btn-sm" aria-expanded={open} onClick={() => (setOpen(!open), setNote(null))}>
+          Reset Password
+        </button>
+        {!me && (
+          <button type="button" className="btn btn-danger btn-sm" disabled={busy} onClick={remove}>
+            Remove
+          </button>
+        )}
+      </div>
+      {open && (
+        <form onSubmit={reset} className="staff-reset form-grid">
+          <div className="field">
+            <label htmlFor={`pw-${id}`}>New password for {name}</label>
+            <NewPassword id={`pw-${id}`} value={password} onChange={setPassword} />
+          </div>
+          <button type="submit" className="btn btn-primary btn-sm" disabled={busy}>
+            {busy ? "Saving…" : "Save Password"}
+          </button>
+        </form>
+      )}
+      <NoteLine note={note} />
+    </div>
   );
 }
 

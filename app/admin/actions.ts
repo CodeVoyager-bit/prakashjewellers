@@ -3,7 +3,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { auth, requireStaff } from "@/lib/auth";
+import { auth, isOwner, requireStaff } from "@/lib/auth";
 import { sign } from "@/lib/cloudinary.mjs";
 import { nextCode, nextPiece } from "@/lib/codes.mjs";
 import { db } from "@/lib/db";
@@ -25,6 +25,7 @@ import {
   type Status,
 } from "@/lib/data";
 import { perGram, rupees } from "@/lib/price";
+import { staffEmail } from "@/lib/staff-email.mjs";
 
 const text = (fd: FormData, k: string, max = 200) => String(fd.get(k) ?? "").trim().slice(0, max);
 const num = (fd: FormData, k: string) => {
@@ -241,4 +242,51 @@ export async function uploadSignature() {
 export async function signOut() {
   await auth.api.signOut({ headers: await headers() });
   redirect("/admin/login");
+}
+
+// Staff logins: only owners manage them, and nobody can remove their own login, so an owner always remains.
+const NOT_OWNER = "Only an owner can manage staff logins.";
+const owner = async () => {
+  const s = await requireStaff();
+  return isOwner(s.user) ? s : null;
+};
+const passwordError = (p: string) => (p.length < 8 ? "Use a password of at least 8 characters." : p.length > 128 ? "That password is too long." : "");
+
+export async function addStaff(fd: FormData): Promise<string> {
+  if (!(await owner())) return NOT_OWNER;
+  const name = text(fd, "name", 60);
+  const phone = text(fd, "phone").replace(/\D/g, "");
+  const password = String(fd.get("password") ?? "");
+  if (!name) return "Enter the person’s name.";
+  if (!/^[6-9]\d{9}$/.test(phone)) return "Enter a 10-digit Indian mobile number.";
+  if (passwordError(password)) return passwordError(password);
+  const ctx = await auth.$context;
+  const email = staffEmail(phone);
+  if (await ctx.internalAdapter.findUserByEmail(email)) return "That mobile number already has a login. Use Reset Password on it instead.";
+  const user = await ctx.internalAdapter.createUser({ email, name, role: fd.get("owner") ? "owner" : "staff" }, { method: "admin" });
+  await ctx.internalAdapter.linkAccount({ providerId: "credential", accountId: user.id, userId: user.id, password: await ctx.password.hash(password) });
+  revalidatePath("/admin/staff");
+  return "";
+}
+
+export async function resetStaffPassword(id: string, password: string): Promise<string> {
+  const me = await owner();
+  if (!me) return NOT_OWNER;
+  if (passwordError(password)) return passwordError(password);
+  const ctx = await auth.$context;
+  if (!(await ctx.internalAdapter.findUserById(id))) return "That login no longer exists.";
+  await ctx.internalAdapter.updatePassword(id, await ctx.password.hash(password));
+  // Someone else's devices are signed out, so the old password stops working everywhere at once.
+  if (id !== me.user.id) await ctx.internalAdapter.deleteUserSessions(id);
+  return "";
+}
+
+export async function removeStaff(id: string): Promise<string> {
+  const me = await owner();
+  if (!me) return NOT_OWNER;
+  if (id === me.user.id) return "You can’t remove your own login.";
+  // Deletes their sessions and password too, so they're signed out immediately.
+  await (await auth.$context).internalAdapter.deleteUser(id);
+  revalidatePath("/admin/staff");
+  return "";
 }

@@ -9,15 +9,17 @@ const LINKS = [
   ["/admin/rates", "Rates"],
   ["/admin/products", "Products"],
   ["/admin/enquiries", "Enquiries"],
+  ["/admin/staff", "Staff"],
   ["/admin/settings", "Settings"],
   ["/admin/guide", "Guide"],
 ] as const;
+
+export const initials = (name: string) => name.split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase();
 
 // Staff top bar: monogram and store name, tab pills, the signed-in person.
 export async function AdminBar({ name, current }: { name: string; current?: string }) {
   const session = await auth.api.getSession({ headers: await headers() });
   const who = session?.user.name || "Staff";
-  const initials = who.split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase();
   return (
     <header className="admin-bar no-print">
       <div className="admin-bar-row">
@@ -37,7 +39,7 @@ export async function AdminBar({ name, current }: { name: string; current?: stri
             View Site
           </Link>
           <span className="avatar" title={who} aria-label={`Signed in as ${who}`}>
-            {initials}
+            {initials(who)}
           </span>
           <form action={signOut}>
             <button type="submit" className="admin-link">

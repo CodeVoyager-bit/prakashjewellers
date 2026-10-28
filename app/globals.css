@@ -769,7 +769,8 @@ body:has(.admin-bar) .btn { min-height: 44px; padding: 0 18px; letter-spacing: 0
 .admin-bar-row { display: grid; grid-template-columns: 1fr auto; grid-template-areas: "brand user" "nav nav"; align-items: center; gap: 4px 12px; max-width: 1320px; margin-inline: auto; padding: 8px max(16px, env(safe-area-inset-left)) 6px; }
 .admin-brand { grid-area: brand; display: inline-flex; align-items: center; gap: 10px; min-width: 0; font-family: var(--font-logo), var(--font-display), serif; font-size: 1rem; font-weight: 600; letter-spacing: 0.06em; text-decoration: none; }
 .admin-brand span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-@media (max-width: 479px) { .admin-brand span { display: none; } }
+/* The name gives way to the menu: hidden on phones and on laptops too narrow for both. */
+@media (max-width: 479px), (min-width: 900px) and (max-width: 1199px) { .admin-brand span { display: none; } }
 .admin-nav { grid-area: nav; display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; padding: 2px 0 4px; }
 /* On phones the pills scroll sideways; the fade shows there's more. */
 @media (max-width: 899px) { .admin-nav { padding-inline-end: 32px; -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 40px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 40px), transparent); } }
@@ -782,7 +783,8 @@ body:has(.admin-bar) .btn { min-height: 44px; padding: 0 18px; letter-spacing: 0
 .avatar { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--foil); color: var(--foil-ink); font-size: 0.8125rem; font-weight: 600; }
 @media (min-width: 900px) {
   .admin-bar-row { grid-template-columns: auto 1fr auto; grid-template-areas: "brand nav user"; gap: 24px; padding: 10px 32px; }
-  .admin-nav { justify-content: center; padding: 0; }
+  /* safe: if the pills ever overflow, they scroll from the first one instead of clipping both ends. */
+  .admin-nav { justify-content: safe center; padding: 0; }
 }
 .admin { display: grid; gap: 20px; width: 100%; max-width: 1320px; margin-inline: auto; padding: 24px max(16px, env(safe-area-inset-left)) 64px; }
 @media (min-width: 900px) { .admin { padding-inline: 32px; } }
@@ -828,6 +830,21 @@ body:has(.admin-bar) .btn { min-height: 44px; padding: 0 18px; letter-spacing: 0
 .admin-item-info { display: grid; gap: 2px; }
 .admin-item-actions { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
 .row-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+/* Staff page: one row per login, its actions under it on phones and beside it from tablet up */
+.staff-list { display: grid; margin: 16px 0 0; padding: 0; list-style: none; }
+.staff-list li { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 4px 14px; align-items: center; padding: 16px 0; border-top: 1px solid #f1ede8; }
+.staff-list li:first-child { border-top: 0; }
+.staff-list .avatar { width: 40px; height: 40px; }
+.staff-name { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+.staff-actions { display: grid; grid-column: 2; gap: 12px; margin-top: 8px; }
+.staff-reset { padding: 16px; border-radius: 12px; background: #f8f6f3; }
+@media (min-width: 700px) {
+  .staff-list li { grid-template-columns: 40px minmax(0, 1fr) auto; }
+  .staff-actions { grid-column: auto; justify-items: end; margin-top: 0; }
+  /* With the reset form or a message open, the actions take the full row under the name. */
+  .staff-actions:has(.staff-reset, .notice, .error) { grid-column: 2 / -1; justify-items: stretch; }
+  .staff-actions:has(.staff-reset, .notice, .error) .row-actions { justify-content: flex-end; }
+}
 @media (min-width: 900px) {
   .admin-item { grid-template-columns: 64px minmax(0, 1fr) auto; align-items: center; }
   .admin-item-actions { grid-column: auto; }

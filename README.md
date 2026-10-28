@@ -38,7 +38,7 @@ npm install
 npm run add-staff -- 9876543210 'a-strong-password' "Owner Name"
 ```
 
-Staff sign in at `/admin` with that mobile number and password. The same command resets the password if the number already has a login. To remove someone, delete their document from the `user` collection in Atlas; its email field reads `91<number>@staff.invalid`, an internal key that is never mailed.
+This creates the first login, an **owner**. Staff sign in at `/admin` with that mobile number and password. From then on, owners add, reset and remove logins on the **Staff** page in the admin; a login marked Staff (not Owner) can use the admin but can't manage logins. The command still works to reset any password if an owner is locked out. Logins are stored with an internal key, `91<number>@staff.invalid`, that is never mailed.
 
 ## Deploy (Vercel)
 
