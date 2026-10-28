@@ -15,7 +15,10 @@ type Props = { params: Promise<{ id: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const item = await getItem((await params).id);
-  if (!item || item.status !== "live") return {};
+  // A missing piece shows the 404 page; give it that title (the client otherwise falls back to the site default).
+  const missing = !item || (item.status !== "live" && !(await auth.api.getSession({ headers: await headers() })));
+  if (missing) return { title: "Page Not Found" };
+  if (item.status !== "live") return {};
   const cover = item.photos[0];
   const title = [item.name, item.code].filter(Boolean).join(" · ");
   return { title, openGraph: { title, images: cover ? [cloudinaryLoader({ src: cover, width: 1200 })] : [] } };
