@@ -15,7 +15,7 @@ export default async function ShopLayout({ children }: { children: React.ReactNo
         Skip to Content
       </a>
       <RateBar rates={s.rates} />
-      {/* Centred wordmark between search and the cart; on desktop the nav sits on a row beneath. */}
+      {/* Phones: search, centred logo, cart (tabs are a bottom bar). Desktop: one row of logo, menu, search, cart. */}
       <header className="site-head">
         <div className="wrap head-row">
           <Link href="/collections#q" className="icon-btn head-search" aria-label="Search by name or design code">
