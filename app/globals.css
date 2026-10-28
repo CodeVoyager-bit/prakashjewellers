@@ -370,8 +370,9 @@ body { padding-bottom: calc(var(--tabbar) + env(safe-area-inset-bottom)); }
   .tab { flex-direction: row-reverse; gap: 8px; min-height: 44px; padding: 0 14px; font-size: 0.9375rem; }
   .tab:hover { color: var(--ink); }
   .tab[aria-current] { color: var(--ink); text-decoration: underline; text-decoration-color: var(--gold); text-underline-offset: 8px; text-decoration-thickness: 2px; }
-  .tab-icon svg { display: none; }
-  .tab-icon .badge { position: static; }
+  /* Text-only nav on desktop. Scoped to .tabs: the header cart button shares .tab-icon and keeps its bag. */
+  .tabs .tab-icon svg { display: none; }
+  .tabs .tab-icon .badge { position: static; }
 }
 
 /* Hero: the newest pieces in a collage, the rate tag swinging on its thread, gold light drifting behind */
