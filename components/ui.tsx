@@ -162,3 +162,35 @@ export function InstallApp({ name }: { name: string }) {
     </li>
   );
 }
+
+// Full-width hero: the newest pieces crossfade slowly, each with a gentle zoom. Static under reduced motion.
+export function HeroSlides({ photos }: { photos: string[] }) {
+  const [active, setActive] = useState(0);
+  useEffect(() => {
+    if (photos.length < 2 || reducedMotion()) return;
+    const t = setInterval(() => setActive((i) => (i + 1) % photos.length), 6500);
+    return () => clearInterval(t);
+  }, [photos.length]);
+  return (
+    <div className="hero-media" aria-hidden="true">
+      {photos.length ? (
+        photos.map((p, i) => (
+          <div key={p} className={`hero-slide${i === active ? " is-active" : ""}`}>
+            <Photo id={p} alt="" sizes="100vw" w={2000} h={2500} preload={i === 0} />
+          </div>
+        ))
+      ) : (
+        <div className="hero-slide is-active">
+          <Photo alt="" />
+        </div>
+      )}
+      {photos.length > 1 && (
+        <div className="hero-dots">
+          {photos.map((p, i) => (
+            <span key={p} className={i === active ? "is-active" : ""} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

@@ -91,7 +91,7 @@ export default async function ItemPage({ params }: Props) {
           </dl>
           {item.description && <p className="desc">{item.description}</p>}
 
-          <PieceActions id={item.id} available={item.status === "live" ? item.qty : 0} seen={p?.total ?? null} phone={s.phone} name={item.name} />
+          <PieceActions id={item.id} available={item.status === "live" ? item.qty : 0} seen={p?.total ?? null} phone={s.phone} name={item.name} photo={item.photos[0] ?? null} />
           <p className="fine item-note">Final price and availability will be confirmed by the store. Adding to the enquiry cart doesn’t reserve the piece.</p>
         </div>
       </div>

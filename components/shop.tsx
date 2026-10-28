@@ -23,28 +23,21 @@ export function RateTag({ rate }: { rate: Rate }) {
   );
 }
 
-// A slow marquee of every published rate under the header. Stale or missing rates say so.
-export function RateTicker({ rates }: { rates: Rate[] }) {
-  const items = rates.map((r) =>
-    r.perGram ? `${r.label} ${rupees(r.perGram)}/g · ${isToday(r.updatedAt) ? `updated ${updated(r)}` : `last updated ${updated(r)}, today’s rate not yet published`}` : `${r.label}: rate being updated`,
-  );
-  const run = [...items, "Estimates only · final price confirmed by the store"];
+// A quiet announcement bar with the day's published rates. Stale or missing rates say so.
+export function RateBar({ rates }: { rates: Rate[] }) {
+  const text = rates
+    .map((r) => (r.perGram ? `${r.label} ${rupees(r.perGram)}/g` : `${r.label}: rate being updated`))
+    .join("  ·  ");
+  const main = rates.find((r) => r.perGram);
+  const when = main?.updatedAt ? (isToday(main.updatedAt) ? `Updated ${updated(main)}` : `Last updated ${updated(main)} · today’s rate not yet published`) : "";
   return (
-    <div className="ticker" role="region" aria-label="Gold rates">
-      <div className="ticker-track">
-        {[0, 1].map((copy) => (
-          <p key={copy} className="ticker-run" aria-hidden={copy === 1 || undefined}>
-            {run.map((t, i) => (
-              <span key={i}>
-                <span className="ticker-gem" aria-hidden="true">
-                  ◆
-                </span>
-                {t}
-              </span>
-            ))}
-          </p>
-        ))}
-      </div>
+    <div className="ratebar" role="region" aria-label="Gold rates">
+      <p className="wrap ratebar-row">
+        <Link href="/calculator">
+          <span className="ratebar-rates">{text}</span>
+          {when && <span className={`ratebar-when${main && !isToday(main.updatedAt) ? " is-stale" : ""}`}>{when}</span>}
+        </Link>
+      </p>
     </div>
   );
 }
@@ -58,29 +51,33 @@ export function StaleNotice({ rate }: { rate: Rate | null }) {
   );
 }
 
-const availability = (i: Item) => (i.qty <= 0 ? { text: "Sold out", cls: "pill-out" } : i.qty === 1 ? { text: "Only 1", cls: "pill-one" } : null);
+const availability = (i: Item) => (i.qty <= 0 ? "Sold out" : i.qty === 1 ? "One of a kind" : "");
 
 export function ItemCard({ item, s, preload }: { item: Item; s: Settings; preload?: boolean }) {
   const p = priceFor(item, s);
   const href = `/item/${item.id}`;
-  const badge = availability(item);
+  const tags = [item.demo && "Sample", availability(item)].filter(Boolean);
+  const sizes = "(min-width: 1100px) 25vw, (min-width: 700px) 33vw, 50vw";
   return (
     <article className="card">
       <div className="card-media">
         <Link href={href} tabIndex={-1} aria-hidden="true">
           <ViewTransition name={`piece-${item.id}`} share="morph" default="none">
             <div className="card-photo">
-              <Photo id={item.photos[0]} alt="" sizes="(min-width: 1100px) 25vw, (min-width: 700px) 33vw, 50vw" preload={preload} />
+              <Photo id={item.photos[0]} alt="" sizes={sizes} preload={preload} />
             </div>
           </ViewTransition>
+          {/* A second photo, where there is one, fades in on hover. */}
+          {item.photos[1] && (
+            <div className="card-photo card-photo-alt">
+              <Photo id={item.photos[1]} alt="" sizes={sizes} />
+            </div>
+          )}
         </Link>
-        {item.qty > 0 && <CardAdd id={item.id} name={item.name} seen={p?.total ?? null} />}
-        <span className="pills">
-          {item.demo && <span className="pill pill-sample">Sample</span>}
-          {badge && <span className={`pill ${badge.cls}`}>{badge.text}</span>}
-        </span>
+        {item.qty > 0 && <CardAdd id={item.id} name={item.name} photo={item.photos[0] ?? null} seen={p?.total ?? null} />}
       </div>
       <div className="card-body">
+        {tags.length > 0 && <p className="card-tags">{tags.join(" · ")}</p>}
         <h3 className="card-title">
           <Link href={href}>{item.name}</Link>
         </h3>
@@ -159,7 +156,7 @@ export function PriceBreakdown({ p, item }: { p: Price; item: Item }) {
   );
 }
 
-// "Explore our worlds": arched photo tiles, one per category.
+// Collection tiles: tall photos with the name set over them, one per category.
 export function CollectionTiles({ collections }: { collections: { name: string; photo: string | null }[] }) {
   return (
     <ul className="tiles">
@@ -167,9 +164,12 @@ export function CollectionTiles({ collections }: { collections: { name: string; 
         <li key={c.name} className="reveal" style={{ "--i": i } as React.CSSProperties}>
           <Link href={`/collections?c=${encodeURIComponent(c.name)}`} className="tile">
             <span className="tile-media">
-              <Photo id={c.photo} alt="" sizes="180px" w={360} h={480} />
+              <Photo id={c.photo} alt="" sizes="(min-width: 768px) 25vw, 45vw" w={600} h={800} />
             </span>
-            <span className="tile-label">{c.name}</span>
+            <span className="tile-label">
+              {c.name}
+              <span className="tile-cta">Discover</span>
+            </span>
           </Link>
         </li>
       ))}
@@ -193,13 +193,12 @@ export function SearchForm({ q, hidden }: { q?: string; hidden?: Record<string, 
   );
 }
 
+// Centred, spaced headings in the manner of the luxury houses; the optional link sits beneath.
 export function SectionHead({ id, title, eyebrow, link }: { id?: string; title: string; eyebrow?: string; link?: { href: string; label: string } }) {
   return (
     <div className="section-head reveal">
-      <div>
-        {eyebrow && <p className="eyebrow">{eyebrow}</p>}
-        <h2 id={id}>{title}</h2>
-      </div>
+      {eyebrow && <p className="eyebrow">{eyebrow}</p>}
+      <h2 id={id}>{title}</h2>
       {link && (
         <Link href={link.href} className="text-link">
           {link.label}

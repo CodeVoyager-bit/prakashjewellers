@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { CartLink, TabNav } from "@/components/cart";
+import { CartLink, CartToast, TabNav } from "@/components/cart";
 import { InstagramIcon, SearchIcon } from "@/components/icons";
-import { RateTicker } from "@/components/shop";
+import { RateBar } from "@/components/shop";
 import { TrackVisit } from "@/components/ui";
 import { getSettings } from "@/lib/data";
 
@@ -13,41 +13,57 @@ export default async function ShopLayout({ children }: { children: React.ReactNo
       <a href="#main" className="skip">
         Skip to Content
       </a>
+      <RateBar rates={s.rates} />
+      {/* Centred wordmark between search and the cart; on desktop the nav sits on a row beneath. */}
       <header className="site-head">
         <div className="wrap head-row">
           <Link href="/collections#q" className="icon-btn head-search" aria-label="Search by name or design code">
-            <SearchIcon size={21} />
+            <SearchIcon size={20} />
           </Link>
           <Link href="/" className="wordmark" translate="no">
             {s.name}
           </Link>
-          <TabNav />
           <CartLink />
+          <TabNav />
         </div>
       </header>
-      <RateTicker rates={s.rates} />
+      <CartToast />
       <main id="main">{children}</main>
       <footer className="site-foot">
-        <div className="wrap foot-grid">
-          <div className="foot-shop">
-            <p className="wordmark foot-mark" translate="no">
-              {s.name}
-            </p>
-            <p className="muted">{s.address || "Store address to be confirmed"}</p>
-            <p className="foot-links">
-              <Link href="/visit">Visit &amp; Contact</Link>
+        <div className="wrap">
+          <div className="foot-grid">
+            <div className="foot-col foot-brand">
+              <p className="wordmark foot-mark" translate="no">
+                {s.name}
+              </p>
+              <p>Traditional gold jewellery, each piece weighed and priced individually.</p>
+            </div>
+            <nav className="foot-col" aria-label="Explore">
+              <p className="foot-head">Explore</p>
+              <Link href="/collections">All Collections</Link>
               <Link href="/calculator">Price Calculator</Link>
-              {s.instagram && (
+              <Link href="/cart">Enquiry Cart</Link>
+            </nav>
+            <div className="foot-col">
+              <p className="foot-head">Visit</p>
+              <p>{s.address || <span className="foot-placeholder">Address to be confirmed</span>}</p>
+              <p>{s.hours || <span className="foot-placeholder">Opening hours to be confirmed</span>}</p>
+              <Link href="/visit">Directions &amp; Contact</Link>
+            </div>
+            <div className="foot-col">
+              <p className="foot-head">Follow</p>
+              {s.instagram ? (
                 <a href={`https://instagram.com/${s.instagram}`} target="_blank" rel="noopener noreferrer">
                   <InstagramIcon size={18} /> @{s.instagram}
                 </a>
+              ) : (
+                <span className="foot-placeholder">Instagram to be confirmed</span>
               )}
-            </p>
+            </div>
           </div>
-          <p className="fine">
-            Prices are estimates from the store’s published gold rate, making charge and tax settings. Each piece is weighed
-            individually. Final price and availability will be confirmed by the store. No online payment or order is taken on
-            this site.
+          <p className="foot-fine">
+            Prices are estimates from the store’s published gold rate, making charge and tax settings. Final price and
+            availability will be confirmed by the store. No online payment or order is taken on this site.
           </p>
         </div>
       </footer>

@@ -8,7 +8,7 @@ import type { Quote } from "@/lib/data";
 import { formatDayTime, rupees } from "@/lib/price";
 import { BagIcon, CheckIcon, ChatIcon, CloseIcon, GridIcon, HomeIcon, MinusIcon, PhoneIcon, PinIcon, PlusIcon } from "./icons";
 import { Photo } from "./photo";
-import { CountUp, reducedMotion, Sheet, track } from "./ui";
+import { CountUp, Sheet, track } from "./ui";
 
 // The enquiry cart lives in this browser only: no login, nothing reserved.
 // `seen` is the estimate the customer last saw, so we can tell them when the rate moves it.
@@ -62,36 +62,51 @@ const setQty = (id: string, qty: number) => write(lines().map((l) => (l.id === i
 const removeLine = (id: string) => write(lines().filter((l) => l.id !== id));
 const acknowledge = (q: Quote) => write(lines().map((l) => ({ ...l, seen: q.lines.find((x) => x.id === l.id)?.price?.total ?? l.seen })));
 
-// The piece's photo flies along an arc into the cart icon, which then gives a little bounce.
-function flyToCart(from: Element | null) {
-  const target = [...document.querySelectorAll("[data-cart-target]")].find((t) => t.getBoundingClientRect().width > 0);
-  const img = from?.querySelector("img");
-  if (!target || !img || reducedMotion()) return;
-  const a = img.getBoundingClientRect();
-  const b = target.getBoundingClientRect();
-  const ghost = img.cloneNode(true) as HTMLImageElement;
-  Object.assign(ghost.style, { position: "fixed", left: `${a.left}px`, top: `${a.top}px`, width: `${a.width}px`, height: `${a.height}px`, margin: 0, objectFit: "cover", borderRadius: "8px", zIndex: "100", pointerEvents: "none" });
-  document.body.append(ghost);
-  setTimeout(() => ghost.remove(), 1500); // in case the animation never finishes (background tab)
-  const dx = b.left + b.width / 2 - (a.left + a.width / 2);
-  const dy = b.top + b.height / 2 - (a.top + a.height / 2);
-  ghost
-    .animate(
-      [
-        { transform: "translate(0, 0) scale(1) rotate(0deg)", opacity: 1 },
-        { transform: `translate(${dx * 0.45}px, ${Math.min(dy, 0) * 0.5 - 140}px) scale(0.55) rotate(-8deg)`, opacity: 1, offset: 0.45 },
-        { transform: `translate(${dx}px, ${dy}px) scale(0.06) rotate(12deg)`, opacity: 0.4 },
-      ],
-      { duration: 750, easing: "cubic-bezier(0.45, 0, 0.25, 1)" },
-    )
-    .finished.then(() => {
-      ghost.remove();
-      target.animate([{ transform: "scale(1)" }, { transform: "scale(1.35)" }, { transform: "scale(0.92)" }, { transform: "scale(1)" }], { duration: 450, easing: "ease-out" });
-    });
+// After an add, a small panel slides in to confirm it (see CartToast), the way luxury stores do.
+type Added = { name: string; photo: string | null };
+const ADDED = "pj-added";
+const announce = (detail: Added) => window.dispatchEvent(new CustomEvent<Added>(ADDED, { detail }));
+
+export function CartToast() {
+  const [added, setAdded] = useState<(Added & { at: number }) | null>(null);
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
+    const show = (e: Event) => {
+      setAdded({ ...(e as CustomEvent<Added>).detail, at: Date.now() });
+      clearTimeout(timer);
+      timer = setTimeout(() => setAdded(null), 4500);
+    };
+    window.addEventListener(ADDED, show);
+    return () => {
+      window.removeEventListener(ADDED, show);
+      clearTimeout(timer);
+    };
+  }, []);
+  return (
+    <div className="toast-region" aria-live="polite">
+      {added && (
+        <div className="toast" key={added.at}>
+          <span className="toast-photo">
+            <Photo id={added.photo} alt="" sizes="64px" w={128} h={160} />
+          </span>
+          <span className="toast-text">
+            <span className="eyebrow">Added to your enquiry cart</span>
+            <span className="toast-name">{added.name}</span>
+            <Link href="/cart" className="text-link" onClick={() => setAdded(null)}>
+              View Enquiry Cart
+            </Link>
+          </span>
+          <button type="button" className="icon-btn" aria-label="Dismiss" onClick={() => setAdded(null)}>
+            <CloseIcon size={18} />
+          </button>
+        </div>
+      )}
+    </div>
+  );
 }
 
-// Quick add on product cards.
-export function CardAdd({ id, name, seen }: { id: string; name: string; seen: number | null }) {
+// Quick add on product cards: a quiet outline bag in the corner of the photo.
+export function CardAdd({ id, name, photo, seen }: { id: string; name: string; photo: string | null; seen: number | null }) {
   const inCart = useCart().some((l) => l.id === id);
   const router = useRouter();
   return (
@@ -99,19 +114,19 @@ export function CardAdd({ id, name, seen }: { id: string; name: string; seen: nu
       type="button"
       className={`card-add${inCart ? " is-in" : ""}`}
       aria-label={inCart ? `${name} is in your enquiry cart. Open cart` : `Add ${name} to enquiry cart`}
-      onClick={(e) => {
+      onClick={() => {
         if (inCart) return router.push("/cart");
-        flyToCart(e.currentTarget.closest(".card"));
         addLine(id, seen);
+        announce({ name, photo });
       }}
     >
-      {inCart ? <CheckIcon size={20} /> : <PlusIcon size={20} />}
+      {inCart ? <CheckIcon size={18} /> : <BagIcon size={18} />}
     </button>
   );
 }
 
 // Product page actions: add to the cart, or enquire about just this piece.
-export function PieceActions({ id, available, seen, phone, name }: { id: string; available: number; seen: number | null; phone: string; name: string }) {
+export function PieceActions({ id, available, seen, phone, name, photo }: { id: string; available: number; seen: number | null; phone: string; name: string; photo: string | null }) {
   const inCart = useCart().some((l) => l.id === id);
   const [handoff, setHandoff] = useState(false);
   return (
@@ -126,8 +141,8 @@ export function PieceActions({ id, available, seen, phone, name }: { id: string;
             type="button"
             className="btn btn-primary btn-block"
             onClick={() => {
-              flyToCart(document.querySelector(".gallery .shot"));
               addLine(id, seen);
+              announce({ name, photo });
             }}
           >
             <BagIcon size={18} /> Add to Enquiry Cart
