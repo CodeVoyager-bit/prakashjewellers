@@ -1,24 +1,41 @@
 import Link from "next/link";
 import { signOut } from "@/app/admin/actions";
 
-export function AdminBar({ name }: { name: string }) {
+const LINKS = [
+  ["/admin", "Dashboard"],
+  ["/admin/rates", "Rates"],
+  ["/admin/products", "Products"],
+  ["/admin/enquiries", "Enquiries"],
+  ["/admin/settings", "Settings"],
+  ["/admin/guide", "Staff Guide"],
+] as const;
+
+export function AdminBar({ name, current }: { name: string; current?: string }) {
   return (
     <header className="admin-bar no-print">
-      <div className="wrap head-row">
+      <div className="wrap admin-bar-row">
         <Link href="/admin" className="brand">
           <span translate="no">{name}</span>
           <span className="staff-tag">Staff</span>
         </Link>
-        <nav aria-label="Staff">
-          <Link href="/">View Site</Link>
-          <Link href="/admin/qr">Counter QR</Link>
+        <div className="admin-bar-end">
+          <Link href="/" className="admin-link">
+            View Site
+          </Link>
           <form action={signOut}>
             <button type="submit" className="linkish">
               Sign Out
             </button>
           </form>
-        </nav>
+        </div>
       </div>
+      <nav className="wrap admin-nav" aria-label="Staff">
+        {LINKS.map(([href, label]) => (
+          <Link key={href} href={href} aria-current={current === href ? "page" : undefined}>
+            {label}
+          </Link>
+        ))}
+      </nav>
     </header>
   );
 }

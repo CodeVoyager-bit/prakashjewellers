@@ -1,13 +1,15 @@
 import Link from "next/link";
-import { ArrowIcon, ChatIcon, GemIcon, TagIcon } from "@/components/icons";
+import { ArrowIcon, CalculatorIcon, ChatIcon, ClockIcon, GemIcon, InstagramIcon, PinIcon, TagIcon } from "@/components/icons";
 import { CollectionTiles, Empty, ItemGrid, Photo, RateTag, SearchForm, SectionHead } from "@/components/shop";
 import { collections, getItems, getSettings } from "@/lib/data";
 
 export default async function Home() {
   const [s, items] = await Promise.all([getSettings(), getItems()]);
-  // The hero collage is the three newest cover photos, so it changes as the owner adds pieces.
+  // The hero collage is the three newest cover photos, so it changes as the store adds pieces.
   const covers = items.flatMap((i) => i.photos.slice(0, 1)).slice(0, 3);
-  const worlds = collections(items);
+  const featured = items.filter((i) => i.featured).slice(0, 4);
+  const latest = items.filter((i) => !i.featured).slice(0, 6);
+  const rate = s.rates.find((r) => r.perGram) ?? s.rates[0];
 
   return (
     <>
@@ -16,7 +18,7 @@ export default async function Home() {
           <div className="collage" data-count={Math.max(covers.length, 1)}>
             {covers.length ? (
               covers.map((c, i) => (
-                <div key={c} className="frame">
+                <div key={c} className="frame" style={{ "--i": i } as React.CSSProperties}>
                   <Photo id={c} alt="" sizes={i ? "(min-width: 900px) 18vw, 38vw" : "(min-width: 900px) 30vw, 58vw"} preload w={i ? 600 : 900} h={i ? 750 : 1200} />
                 </div>
               ))
@@ -25,57 +27,121 @@ export default async function Home() {
                 <Photo alt="" />
               </div>
             )}
-            <RateTag rate={s.rate} rateAt={s.rateAt} />
+            <RateTag rate={rate} />
           </div>
           <div className="hero-copy">
-            <p className="eyebrow">New designs, every week</p>
-            <h1>Find the design you fell in love with.</h1>
-            <p className="lede">Traditional gold jewellery for bridal, daily wear and gifts, every price worked out at today’s 22K rate.</p>
-            <Link href="/collections" className="btn btn-primary btn-caps">
-              Explore Collections <ArrowIcon size={18} />
-            </Link>
+            <p className="eyebrow rise" style={{ "--i": 0 } as React.CSSProperties}>
+              Traditional gold jewellery
+            </p>
+            <h1 className="rise" style={{ "--i": 1 } as React.CSSProperties}>
+              Find the design you fell in love with.
+            </h1>
+            <p className="lede rise" style={{ "--i": 2 } as React.CSSProperties}>
+              Bridal sets, mangalsutras, earrings and everyday pieces, each weighed individually and priced from the store’s
+              published gold rate.
+            </p>
+            <div className="hero-ctas rise" style={{ "--i": 3 } as React.CSSProperties}>
+              <Link href="/collections" className="btn btn-primary btn-caps">
+                Explore Collections <ArrowIcon size={18} />
+              </Link>
+              <Link href="/calculator" className="btn btn-ghost">
+                <CalculatorIcon size={18} /> Price Calculator
+              </Link>
+            </div>
+            {items.some((i) => i.demo) && (
+              <p className="demo-note rise" style={{ "--i": 4 } as React.CSSProperties}>
+                Showing sample pieces and photos for demonstration.
+              </p>
+            )}
           </div>
         </div>
       </section>
 
-      {worlds.length > 0 && (
+      {items.length > 0 && (
         <section className="wrap section" aria-labelledby="worlds">
           <SectionHead id="worlds" eyebrow="Explore our worlds" title="Shop by Collection" link={{ href: "/collections", label: "View All" }} />
-          <CollectionTiles collections={worlds} />
+          <CollectionTiles collections={collections(items)} />
+        </section>
+      )}
+
+      {featured.length > 0 && (
+        <section className="wrap section" aria-labelledby="featured">
+          <SectionHead id="featured" eyebrow="Chosen by the store" title="Featured Pieces" />
+          <ItemGrid items={featured} s={s} />
         </section>
       )}
 
       <section className="wrap section" aria-labelledby="latest">
         <SectionHead id="latest" eyebrow="New arrivals" title="Latest Pieces" link={items.length > 6 ? { href: "/collections", label: "View All" } : undefined} />
-        {items.length ? (
-          <ItemGrid items={items.slice(0, 6)} rate={s.rate} />
+        {latest.length ? (
+          <ItemGrid items={latest} s={s} />
         ) : (
           <Empty title="New designs coming soon" phone={s.phone}>
-            The shop is photographing its latest pieces. Call to ask about anything you have in mind.
+            The store is photographing its latest pieces. Call to ask about anything you have in mind.
           </Empty>
         )}
       </section>
 
       <section className="wrap section">
-        <div className="code-search">
+        <Link href="/calculator" className="calc-teaser reveal">
+          <span className="calc-teaser-icon" aria-hidden="true">
+            <CalculatorIcon size={28} />
+          </span>
+          <span className="calc-teaser-text">
+            <span className="eyebrow">Price calculator</span>
+            <span className="calc-teaser-title">What would 20 g cost today?</span>
+            <span className="muted">See the metal value, making charge and tax for any weight at the store’s rate.</span>
+          </span>
+          <ArrowIcon size={22} />
+        </Link>
+      </section>
+
+      <section className="wrap section">
+        <div className="code-search reveal">
+          <InstagramIcon size={28} />
           <p className="eyebrow">Seen on Instagram?</p>
           <h2>Search the Design Code</h2>
-          <p className="muted">Type the code from the post, like PJ-024, to see the piece and today’s price.</p>
+          <p className="muted">Type the code from the post, like PJ-024, to see the piece and today’s estimate.</p>
           <SearchForm />
+          {s.instagram && (
+            <a href={`https://instagram.com/${s.instagram}`} target="_blank" rel="noopener noreferrer" className="text-link">
+              Follow @{s.instagram} for new designs
+            </a>
+          )}
+        </div>
+      </section>
+
+      <section className="wrap section">
+        <div className="visit-band reveal">
+          <div>
+            <p className="eyebrow">Visit the store</p>
+            <h2 translate="no">{s.name}</h2>
+            <ul className="visit-facts">
+              <li>
+                <PinIcon size={18} /> {s.address || <span className="placeholder">Address to be confirmed</span>}
+              </li>
+              <li>
+                <ClockIcon size={18} /> {s.hours || <span className="placeholder">Opening hours to be confirmed</span>}
+              </li>
+            </ul>
+          </div>
+          <Link href="/visit" className="btn btn-quiet">
+            Directions &amp; Contact <ArrowIcon size={18} />
+          </Link>
         </div>
       </section>
 
       <section className="wrap section">
         <ul className="promises">
-          <li>
+          <li className="reveal" style={{ "--i": 0 } as React.CSSProperties}>
             <TagIcon size={26} />
-            <span>Priced at today’s gold rate</span>
+            <span>Estimates from the store’s published rate</span>
           </li>
-          <li>
+          <li className="reveal" style={{ "--i": 1 } as React.CSSProperties}>
             <GemIcon size={26} />
-            <span>Handcrafted 22K gold</span>
+            <span>Every piece weighed individually</span>
           </li>
-          <li>
+          <li className="reveal" style={{ "--i": 2 } as React.CSSProperties}>
             <ChatIcon size={26} />
             <span>Enquire on WhatsApp, no login</span>
           </li>

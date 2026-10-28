@@ -15,7 +15,7 @@ export default async function QrPage() {
 
   return (
     <>
-      <AdminBar name={s.name} />
+      <AdminBar name={s.name} current="/admin" />
       <main className="wrap admin">
         <div className="qr-card">
           <p className="eyebrow" translate="no">

@@ -1,18 +1,21 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { BackIcon, PhoneIcon } from "@/components/icons";
-import { EnquireButton, SaveButton } from "@/components/saved";
+import { PieceActions } from "@/components/cart";
+import { BackIcon } from "@/components/icons";
+import { PriceBreakdown, StaleNotice } from "@/components/shop";
 import { Gallery, TrackView } from "@/components/ui";
+import { auth } from "@/lib/auth";
 import cloudinaryLoader from "@/lib/cloudinary-loader";
-import { DETAILS, getItem, getSettings } from "@/lib/data";
-import { GST_PCT, MAKING_PCT, priceOf, rupees } from "@/lib/price";
+import { DETAILS, getItem, getSettings, priceFor, STATUSES } from "@/lib/data";
+import { formatTime, isToday, rupees } from "@/lib/price";
 
 type Props = { params: Promise<{ id: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const item = await getItem((await params).id);
-  if (!item) return {};
+  if (!item || item.status !== "live") return {};
   const cover = item.photos[0];
   const title = [item.name, item.code].filter(Boolean).join(" · ");
   return { title, openGraph: { title, images: cover ? [cloudinaryLoader({ src: cover, width: 1200 })] : [] } };
@@ -21,58 +24,59 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function ItemPage({ params }: Props) {
   const { id } = await params;
   const [item, s] = await Promise.all([getItem(id), getSettings()]);
-  if (!item) notFound();
-  const p = priceOf(item, s.rate);
-  const price = p ? rupees(p.total) : "Price on request";
+  // Drafts and archived pieces are only shown to signed-in staff, as a preview.
+  const preview = item && item.status !== "live";
+  if (!item || (preview && !(await auth.api.getSession({ headers: await headers() })))) notFound();
+  const p = priceFor(item, s);
+  const rate = p?.rate ?? s.rates.find((r) => r.key === item.rateKey) ?? null;
 
-  // Rate-priced pieces are 22K by definition; the owner can say more in the Metal field.
   const rows: [string, string][] = [
-    [DETAILS.metal, item.metal || (p && !p.fixed ? "22K gold" : "")],
-    ["Weight", item.weight ? `${item.weight} g` : ""],
-    [DETAILS.stones, item.stones ?? ""],
-    [DETAILS.finish, item.finish ?? ""],
-    [DETAILS.occasion, item.occasion ?? ""],
-    [DETAILS.includes, item.includes ?? ""],
-    ["Availability", item.qty ? `${item.qty} in stock` : "Made to order"],
+    ["Design code", item.code],
+    ["Piece number", item.piece ? `#${item.piece}` : ""],
+    ["Purity", item.pricing === "weight" ? (rate?.label ?? "") : ""],
+    ["Gross weight", item.weight ? `${item.weight} g` : ""],
+    ["Gold weight (billable)", item.netWeight ? `${item.netWeight} g` : ""],
+    ...Object.entries(DETAILS).map(([k, label]) => [label, item[k as keyof typeof DETAILS] ?? ""] as [string, string]),
+    ["Availability", item.qty > 1 ? `${item.qty} in stock` : item.qty === 1 ? "1 in stock, this exact piece" : "Sold out"],
   ];
 
   return (
     <div className="wrap item">
-      <TrackView id={item.id} />
-      <Link href="/collections" className="back">
+      {!preview && <TrackView id={item.id} />}
+      {preview && (
+        <p className="notice notice-info">
+          Staff preview. This piece is <strong>{STATUSES[item.status].split(":")[0].toLowerCase()}</strong> and hidden from customers.{" "}
+          <Link href={`/admin/item/${item.id}`}>Edit piece</Link>
+        </p>
+      )}
+      <Link href="/collections" className="back" transitionTypes={["nav-back"]}>
         <BackIcon size={18} /> Collections
       </Link>
       <div className="item-grid">
-        <Gallery photos={item.photos} name={item.name} />
+        <Gallery id={item.id} photos={item.photos} name={item.name} />
 
         <div className="item-info">
-          {item.category && <p className="eyebrow">{item.category}</p>}
-          <div className="title-row">
-            <h1>{item.name}</h1>
-            <SaveButton id={item.id} name={item.name} className="save-btn save-inline" />
+          <div className="pills pills-static">
+            {item.demo && <span className="pill pill-sample">Sample piece for demonstration</span>}
+            {item.qty <= 0 && <span className="pill pill-out">Sold out</span>}
+            {item.qty === 1 && <span className="pill pill-one">One of a kind</span>}
           </div>
-          {item.code && <p className="code code-lg">{item.code}</p>}
+          {item.category && <p className="eyebrow">{item.category}</p>}
+          <h1>{item.name}</h1>
+          <p className="code code-lg">{[item.code, item.piece && `Piece #${item.piece}`].filter(Boolean).join(" · ")}</p>
 
-          <p className="item-price">{price}</p>
+          <p className="item-price">{p ? rupees(p.total) : "Price on request"}</p>
           <p className="muted small">
-            {p?.fixed ? "Fixed price, GST included" : p ? `Includes making and ${GST_PCT}% GST at ${rupees(s.rate)}/g today` : "Ask the shop for today’s price"}
+            {p?.fixed
+              ? "Fixed price set by the store"
+              : p
+                ? `Estimate at ${rupees(p.rate!.perGram)}/g ${p.rate!.label}${p.rate!.updatedAt ? `, ${isToday(p.rate!.updatedAt) ? "updated today" : "last updated"} ${formatTime(p.rate!.updatedAt)}` : ""}`
+                : rate && !rate.perGram
+                  ? `Today’s ${rate.label} rate is being updated. Ask the store for a price.`
+                  : "Ask the store for today’s price."}
           </p>
-          {p && !p.fixed && (
-            <dl className="breakdown compact">
-              <div>
-                <dt>Gold value</dt>
-                <dd>{rupees(p.gold)}</dd>
-              </div>
-              <div>
-                <dt>Making ({item.making ?? MAKING_PCT}%)</dt>
-                <dd>{rupees(p.making)}</dd>
-              </div>
-              <div>
-                <dt>GST ({GST_PCT}%)</dt>
-                <dd>{rupees(p.gst)}</dd>
-              </div>
-            </dl>
-          )}
+          <StaleNotice rate={p && !p.fixed ? p.rate : null} />
+          {p && <PriceBreakdown p={p} item={item} />}
 
           <h2 className="details-title">Details</h2>
           <dl className="details">
@@ -87,15 +91,8 @@ export default async function ItemPage({ params }: Props) {
           </dl>
           {item.description && <p className="desc">{item.description}</p>}
 
-          <div className="item-actions">
-            {s.phone && (
-              <a href={`tel:${s.phone}`} className="icon-btn bar-btn" aria-label={`Call ${s.name}`}>
-                <PhoneIcon size={20} />
-              </a>
-            )}
-            <EnquireButton id={item.id} />
-          </div>
-          <p className="fine item-note">Handmade pieces vary slightly in weight. The shop confirms the final weight and price. Tap the heart to enquire about several pieces together.</p>
+          <PieceActions id={item.id} available={item.status === "live" ? item.qty : 0} seen={p?.total ?? null} phone={s.phone} name={item.name} />
+          <p className="fine item-note">Final price and availability will be confirmed by the store. Adding to the enquiry cart doesn’t reserve the piece.</p>
         </div>
       </div>
     </div>

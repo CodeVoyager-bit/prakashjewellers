@@ -1,20 +1,27 @@
 # Prakash Jeweller
 
-Mobile-first catalogue and WhatsApp enquiry site for a jewellery shop, styled after the design lookbook. Every price is worked out live from the day's 22K gold rate, which the owner updates once a day. Customers heart pieces into **Saved** and send them to the shop's WhatsApp in one message, or enquire about a single piece from its page; there is no customer login and no online payment. Staff manage everything at `/admin`.
+Mobile-first catalogue and WhatsApp enquiry site for a jewellery store, built for a two-month pilot that the store can keep running afterwards. Every weight-based price is an estimate worked out from the store's published daily rate. Customers add pieces to an **Enquiry cart** and **Send enquiry** on WhatsApp, or enquire about a single piece from its page. There is no customer login, online payment or order confirmation. Staff manage everything at `/admin`.
 
-Pages: Home (`/`), Collections (`/collections`, with category tabs and search by name or design code), a page per piece (`/item/…`, gallery, price breakdown, details table), Saved (`/saved`) and Contact (`/visit`). On phones these sit behind a bottom tab bar.
+Customer pages: Home (`/`), Collections (`/collections`: search by name or design code, category, availability and sort), a page per physical piece (`/item/…`: gallery, price breakdown, verified details), Enquiry Cart (`/cart`), Price Calculator (`/calculator`) and Visit & Contact (`/visit`). On phones these sit behind a bottom tab bar.
 
 **Stack:** Next.js 16 on Vercel · MongoDB Atlas · better-auth (staff phone number + password, no OTP, sign-up disabled) · Cloudinary for photos.
 
 ## Pricing
 
 ```
-price = weight (g) × today's rate × (1 + making %) × 1.03 GST
+metal value   = billable gold weight × rate per gram for the piece's purity
+making charge = metal value × making %
+subtotal      = metal value + making charge + additional charges
+tax           = subtotal × tax %
+estimate      = subtotal + tax          (each line rounded to the rupee)
 ```
 
-- Making charge is 10% unless an item sets its own.
-- An item with a fixed price ignores the formula; the fixed price is treated as final, GST included.
-- The WhatsApp enquiry carries the rate and date used, so a quote can be honoured or re-quoted.
+- Rates are kept per purity category (22K gold, 18K gold, Silver 925 …). The site never converts one purity into another.
+- Making % and tax % are settings (admin → Settings). A piece can override making and add charges such as stone setting.
+- Billable weight is the gold weight when it differs from the gross weight; otherwise the gross weight.
+- A fixed-price piece ignores the formula; its price is treated as final.
+- **The owner must confirm the calculation order, what is taxed and the rounding before launch.** The figures from the meeting are examples, not verified rules.
+- A rate not updated today is shown to customers as stale; a missing rate shows “price on request”. Estimates are never presented as locked.
 
 ## Setup
 
@@ -39,18 +46,29 @@ Import the GitHub repo in Vercel, add the six variables from `.env.example` (wit
 
 `vercel.json` runs the server in Mumbai (`bom1`), next to the Atlas cluster in AWS `ap-south-1`, and adds basic security headers. If the cluster ever moves region, change `regions` to match.
 
-## Daily use (owner)
+**Custom domain later:** add it in Vercel → Domains, set `BETTER_AUTH_URL` to the new address, redeploy, and reprint the counter QR. Nothing else refers to the domain. Don't assume a domain is available until it is bought, in the store's name.
 
-- `/admin` → **Today's 22K Gold Rate** → Update Rate. Every price on the site follows this number; the box warns when it wasn't updated today.
-- **Add Item** with photos, weight and quantity. Each piece gets the next design code (PJ-001, PJ-002 …) unless you type one, e.g. the code from an Instagram post; customers can search either. Optional details (metal, stones, finish, occasion, set includes) fill the piece's details table.
-- After a sale, tap − on the item. At 0 the piece shows as "Made to order".
-- Items are listed most-enquired first, with view and enquiry counts. Recent enquiries are listed below.
-- **Counter QR** prints a card that opens the site, for walk-in customers.
-- **Shop Details** sets the WhatsApp number, phone, address, Instagram handle and theme. The four themes come from the lookbook: Profile (ivory, green and gold; the default), Rose & Pearl, Emerald Art Deco and Maroon velvet. Preview one first by adding `?theme=rose` (or `emerald`, `maroon`, `profile`) to any page address.
+## Staff use
+
+The built-in **Staff Guide** (`/admin/guide`) covers the daily routine. In short:
+
+- **Rates** (`/admin/rates`): choose per gram or per 10 grams, type only the rates that changed, check the preview, save. Each save records who and when. A change of more than 50% is refused unless “Allow a big change” is ticked, which catches per-gram vs per-10-gram mistakes.
+- **Products & Stock**: one entry per physical piece, with its own weight and piece number. **New Piece** copies a design without its weight. **Mark Sold** lowers stock and logs the sale. Draft, Archive and “Preview as Customer” keep unfinished pieces hidden.
+- **Enquiries**: every WhatsApp hand-off, matched by its Ref, with a follow-up status. Enquiries never reserve stock.
+- **Dashboard**: rate warnings, the pilot report (visits, product views, cart adds, WhatsApp opens, confirmed enquiries, pieces sold) and exports.
+- **Settings**: store details (unconfirmed ones show as “to be confirmed”), making and tax %, and the theme: Burgundy (default, from the UI brief) or the lookbook's Profile, Rose & Pearl and Emerald Art Deco. Preview any of them by adding `?theme=rose` (or `emerald`, `profile`, `burgundy`) to a page address.
+
+## Handover and backup
+
+Signed-in staff can download `/admin/export/items.csv`, `enquiries.csv`, `sales.csv`, `stats.csv` and a full `backup.json` (all store data, no login data). The data lives in the store's own Atlas and Cloudinary accounts, so handing over means transferring those accounts, the Vercel project and the GitHub repo.
+
+## The app
+
+The site installs as an app, so customers get the shop's icon on their home screen and a full-screen catalogue: on Android, Chrome offers **Install** (also a button on the Contact page); on iPhone, **Share → Add to Home Screen**. It is the same site, so prices stay live and there is nothing separate to update. For a Play Store listing, wrap the live address with [PWABuilder](https://www.pwabuilder.com) once the final domain is set.
 
 ## Demo data
 
-`npm run demo:add` loads 7 sample pieces with free Unsplash photos, and sets a sample rate if none is set. **Run `npm run demo:remove` before go-live.** It deletes every sample item (even ones edited in admin), its photos and any enquiries for it, and leaves the shop's own items alone. If no other items remain, design codes start again at PJ-001.
+`npm run demo:add` loads 8 sample pieces (7 designs; one design has two pieces of different weights) with free Unsplash photos, and sets a sample 22K rate if none is set. Sample pieces are labelled “Sample” on the site. **Run `npm run demo:remove` before go-live.** It deletes every sample piece (even ones edited in admin), its photos, enquiries and sales. If nothing else is left, design codes and piece numbers restart and the pilot stats start clean.
 
 ## Development
 
@@ -62,4 +80,4 @@ npm run dev
 npm test
 ```
 
-`npm test` checks the pricing formula, the Cloudinary upload signature and phone-number logins.
+`npm test` checks the pricing formula (billable weight, making override, additional charges, tax setting, stale and missing rates, per-10-gram conversion), the Cloudinary upload signature, phone-number logins and design-code search.

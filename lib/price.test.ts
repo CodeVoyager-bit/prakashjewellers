@@ -1,24 +1,42 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { priceOf, rupees } from "./price";
+import { perGram, priceOf, rupees, type Priceable, type Rate } from "./price";
 import { sign } from "./cloudinary.mjs";
 import { staffEmail } from "./staff-email.mjs";
 import { codePattern } from "./codes.mjs";
 
-test("rate-based price matches weight × rate × 1.10 × 1.03", () => {
-  const p = priceOf({ weight: 10, making: null, fixedPrice: null }, 7000)!;
-  assert.deepEqual(p, { fixed: false, gold: 70000, making: 7000, gst: 2310, total: 79310 });
+const today: Rate = { key: "22k", label: "22K gold", perGram: 7000, updatedAt: new Date(), updatedBy: "Test" };
+const cfg = { makingPct: 10, taxPct: 3 };
+const piece = (p: Partial<Priceable> = {}): Priceable => ({ pricing: "weight", rateKey: "22k", weight: 10, netWeight: null, making: null, extraCharge: null, fixedPrice: null, ...p });
+
+test("weight-based price: metal, making, tax, total", () => {
+  const p = priceOf(piece(), [today], cfg)!;
+  assert.deepEqual([p.metal, p.making, p.extra, p.tax, p.total], [70000, 7000, 0, 2310, 79310]);
   assert.equal(p.total, Math.round(10 * 7000 * 1.1 * 1.03));
+  assert.equal(p.stale, false);
 });
 
-test("per-item making charge overrides the 10% default", () => {
-  assert.equal(priceOf({ weight: 10, making: 15, fixedPrice: null }, 7000)!.making, 10500);
+test("billable weight, making override, additional charges and tax setting all apply", () => {
+  const p = priceOf(piece({ weight: 12, netWeight: 10, making: 15, extraCharge: 2000 }), [today], { makingPct: 10, taxPct: 5 })!;
+  assert.equal(p.billable, 10);
+  assert.deepEqual([p.metal, p.making, p.extra, p.tax, p.total], [70000, 10500, 2000, 4125, 86625]);
 });
 
-test("fixed price wins over the formula; missing rate or weight means price on request", () => {
-  assert.equal(priceOf({ weight: 10, making: null, fixedPrice: 4999 }, 7000)!.total, 4999);
-  assert.equal(priceOf({ weight: 10, making: null, fixedPrice: null }, 0), null);
-  assert.equal(priceOf({ weight: 0, making: null, fixedPrice: null }, 7000), null);
+test("fixed price is final; missing rate, category or weight means price on request", () => {
+  assert.equal(priceOf(piece({ pricing: "fixed", fixedPrice: 4999 }), [today], cfg)!.total, 4999);
+  assert.equal(priceOf(piece({ rateKey: "18k" }), [today], cfg), null);
+  assert.equal(priceOf(piece(), [{ ...today, perGram: 0 }], cfg), null);
+  assert.equal(priceOf(piece({ weight: 0 }), [today], cfg), null);
+});
+
+test("a rate not updated today is flagged stale", () => {
+  const old = { ...today, updatedAt: new Date(Date.now() - 2 * 864e5) };
+  assert.equal(priceOf(piece(), [old], cfg)!.stale, true);
+});
+
+test("per-10-gram entry converts to per gram", () => {
+  assert.equal(perGram(137500, "10g"), 13750);
+  assert.equal(perGram(13750, "g"), 13750);
 });
 
 test("rupees use Indian grouping", () => {

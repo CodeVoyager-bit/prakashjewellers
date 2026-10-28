@@ -1,48 +1,57 @@
 "use server";
 
 import { headers } from "next/headers";
-import { enquiriesDb, getSettings, itemsDb, oid, quote } from "@/lib/data";
-import { formatDay, rupees } from "@/lib/price";
+import { enquiriesDb, getSettings, quote } from "@/lib/data";
+import { formatDayTime, rupees } from "@/lib/price";
 
-export async function trackView(id: string) {
-  const _id = oid(id);
-  if (_id) await itemsDb.updateOne({ _id }, { $inc: { views: 1 } });
+type Cart = { id: string; qty: number }[];
+const clean = (cart: Cart) => (Array.isArray(cart) ? cart.map((l) => ({ id: String(l?.id), qty: Math.max(1, Math.floor(Number(l?.qty)) || 1) })) : []);
+
+export async function getQuote(cart: Cart) {
+  return quote(clean(cart));
 }
 
-export async function getQuote(ids: string[]) {
-  return quote(Array.isArray(ids) ? ids.map(String) : []);
-}
-
-// Records the enquiry (for the owner's analytics) and returns the WhatsApp link to open.
-export async function sendEnquiry(ids: string[]): Promise<{ url: string } | { error: string }> {
-  const [q, s] = await Promise.all([getQuote(ids), getSettings()]);
-  if (!q.lines.length) return { error: "Nothing to enquire about yet. Save a piece first." };
-  if (!s.whatsapp) return { error: "WhatsApp enquiries aren't set up yet. Please call the shop instead." };
+// Rechecks prices and availability, then drafts the WhatsApp message for the customer to review.
+// Nothing is sent or reserved here; the enquiry is only counted when they continue to WhatsApp.
+export async function prepareEnquiry(cart: Cart) {
+  const asked = clean(cart);
+  const [q, s] = await Promise.all([quote(asked), getSettings()]);
+  const lines = q.lines.filter((l) => l.qty > 0);
+  if (!lines.length) return { error: "None of these pieces are available right now. Call the store to ask about them." };
+  if (!s.whatsapp) return { error: "WhatsApp enquiries aren’t set up yet. Please call the store instead." };
 
   const { insertedId } = await enquiriesDb.insertOne({
-    items: q.lines.map((l) => ({ id: l.id, code: l.code, name: l.name, weight: l.weight, total: l.price?.total ?? null })),
+    items: lines.map((l) => ({ id: l.id, code: l.code, piece: l.piece, name: l.name, weight: l.weight, qty: l.qty, total: l.price?.total ?? null })),
     total: q.total,
-    rate: q.rate,
+    rates: q.rates.map((r) => `${r.label} ${rupees(r.perGram)}/g`).join(", "),
+    opened: false,
+    status: "opened",
     createdAt: new Date(),
   });
-  await itemsDb.updateMany({ _id: { $in: q.lines.map((l) => oid(l.id)!) } }, { $inc: { enquiries: 1 } });
-
+  const ref = insertedId.toHexString();
   const origin = (await headers()).get("origin") ?? "";
-  const text = [
-    `Namaste ${s.name}, I'd like a quotation for:`,
+  const message = [
+    `Namaste ${s.name}, I’d like a quotation for:`,
     "",
-    ...q.lines.flatMap((l, i) => [
-      `${i + 1}. ${[l.name, l.code, l.weight ? `${l.weight} g` : ""].filter(Boolean).join(" · ")}`,
-      `   ${l.price ? rupees(l.price.total) : "Price on request"}`,
+    ...lines.flatMap((l, i) => [
+      `${i + 1}. ${l.name}`,
+      `   ${[l.code && `Code ${l.code}`, l.piece && `Piece #${l.piece}`, l.weight && `${l.weight} g`, `Qty ${l.qty}`].filter(Boolean).join(" · ")}`,
+      `   Estimate: ${l.price ? rupees(l.price.total * l.qty) : "price on request"}`,
       `   ${origin}/item/${l.id}`,
     ]),
     "",
-    ...(q.goldAndMaking ? [`Gold + making: ${rupees(q.goldAndMaking)}`, `GST 3%: ${rupees(q.gst)}`] : []),
-    ...(q.fixed ? [`Fixed-price pieces: ${rupees(q.fixed)}`] : []),
     `Estimated total: ${rupees(q.total)}${q.onRequest ? ` + ${q.onRequest} on request` : ""}`,
-    ...(q.rate && q.rateAt ? [`Rate used: 22K ${rupees(q.rate)}/g on ${formatDay(q.rateAt)}`] : []),
-    `Ref: PJ-${insertedId.toHexString().slice(-6).toUpperCase()}`,
+    ...q.rates.map((r) => `Rate used: ${r.label} ${rupees(r.perGram)}/g${r.updatedAt ? `, updated ${formatDayTime(r.updatedAt)}` : ""}`),
+    "Estimates only. Final price and availability to be confirmed by the store.",
+    `Ref: PJ-${ref.slice(-6).toUpperCase()}`,
   ].join("\n");
 
-  return { url: `https://wa.me/${s.whatsapp}?text=${encodeURIComponent(text)}` };
+  const want = new Map(asked.map((a) => [a.id, a.qty]));
+  return {
+    ref,
+    message,
+    url: `https://wa.me/${s.whatsapp}?text=${encodeURIComponent(message)}`,
+    skipped: q.lines.filter((l) => l.qty === 0).map((l) => l.name),
+    capped: lines.filter((l) => (want.get(l.id) ?? 0) > l.qty).map((l) => l.name),
+  };
 }

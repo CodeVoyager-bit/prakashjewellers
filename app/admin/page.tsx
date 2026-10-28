@@ -1,172 +1,138 @@
 import Link from "next/link";
 import { AdminBar } from "@/components/admin-bar";
-import { MinusIcon, PlusIcon } from "@/components/icons";
-import { Photo } from "@/components/shop";
-import { Submit } from "@/components/ui";
+import { AlertIcon, CheckIcon, DownloadIcon, PlusIcon } from "@/components/icons";
 import { requireStaff } from "@/lib/auth";
-import { countEnquiriesSince, getEnquiries, getItems, getSettings, THEMES } from "@/lib/data";
-import { count, formatDay, formatDayTime, isToday, priceOf, rupees } from "@/lib/price";
-import { saveRate, saveSettings, setQty } from "./actions";
+import { ENQUIRY_STATUSES, getAllItems, getEnquiries, getSettings, getStats } from "@/lib/data";
+import { formatDayTime, isToday, rupees } from "@/lib/price";
 
-export const metadata = { title: "Staff", robots: { index: false } };
+export const metadata = { title: "Staff Dashboard", robots: { index: false } };
 
-export default async function AdminPage() {
-  await requireStaff();
-  const [s, items, enquiries, week] = await Promise.all([getSettings(), getItems(), getEnquiries(), countEnquiriesSince(7)]);
-  const ranked = [...items].sort((a, b) => b.enquiries - a.enquiries || b.views - a.views);
-  const views = items.reduce((n, i) => n + i.views, 0);
+export default async function Dashboard() {
+  const session = await requireStaff();
+  const [s, items, week, month, enquiries] = await Promise.all([getSettings(), getAllItems(), getStats(7), getStats(30), getEnquiries(5)]);
+  const live = items.filter((i) => i.status === "live");
+  const attention = [
+    ...s.rates.filter((r) => !r.perGram).map((r) => `${r.label} rate isn’t set, so its pieces show “price on request”.`),
+    ...(live.some((i) => i.pricing === "weight" && !i.weight) ? ["Some live pieces have no weight."] : []),
+    ...(items.some((i) => i.demo) ? ["Sample pieces are still in the catalogue. Remove them before launch (see the Staff Guide)."] : []),
+  ];
 
   return (
     <>
-      <AdminBar name={s.name} />
+      <AdminBar name={s.name} current="/admin" />
       <main className="wrap admin">
-        <section className="panel rate-panel" aria-labelledby="rate-title">
-          <h1 id="rate-title">Today’s 22K Gold Rate</h1>
-          {!isToday(s.rateAt) && (
-            <p className="warn" role="status">
-              Not updated today. Prices on the site still use {s.rateAt ? `the ${formatDay(s.rateAt)} rate` : "no rate"}.
-            </p>
-          )}
-          <form action={saveRate} className="rate-form">
-            <div className="field">
-              <label htmlFor="rate">₹ per gram</label>
-              <input id="rate" name="rate" className="rate-input" type="number" inputMode="decimal" min="1" max="99999" step="any" required defaultValue={s.rate || ""} autoComplete="off" />
-            </div>
-            <Submit>Update Rate</Submit>
-          </form>
-          {s.rateAt && <p className="help">Last updated {formatDayTime(s.rateAt)}. Every price on the site follows this number.</p>}
-        </section>
+        <h1>Good day, {session.user.name.split(" ")[0] || "there"}</h1>
 
-        <section className="stats" aria-label="Activity">
-          <p className="stat-card">
-            <span className="stat-num">{week}</span> {week === 1 ? "enquiry" : "enquiries"} in the last 7 days
-          </p>
-          <p className="stat-card">
-            <span className="stat-num">{views}</span> item {views === 1 ? "view" : "views"} in total
-          </p>
-          <p className="stat-card">
-            <span className="stat-num">{items.length}</span> {items.length === 1 ? "item" : "items"} in the catalogue
-          </p>
-        </section>
-
-        <section className="panel" aria-labelledby="items-title">
+        <section className="panel rate-panel" aria-labelledby="rates-title">
           <div className="panel-head">
-            <h2 id="items-title">Items</h2>
-            <Link href="/admin/item/new" className="btn btn-primary btn-sm">
-              <PlusIcon size={18} /> Add Item
+            <h2 id="rates-title">Today’s Rates</h2>
+            <Link href="/admin/rates" className="btn btn-primary btn-sm">
+              Update Rates
             </Link>
           </div>
-          <p className="help">Most enquired first. Use − after a sale; at 0 the piece shows as made to order.</p>
-          {ranked.length ? (
-            <ul className="admin-items">
-              {ranked.map((it) => {
-                const p = priceOf(it, s.rate);
-                return (
-                  <li key={it.id} className="admin-item">
-                    <Link href={`/admin/item/${it.id}`} className="thumb" tabIndex={-1} aria-hidden="true">
-                      <Photo id={it.photos[0]} alt="" sizes="56px" w={112} h={140} />
-                    </Link>
-                    <div className="admin-item-info">
-                      <Link href={`/admin/item/${it.id}`} className="line-name">
-                        {it.name}
-                      </Link>
-                      <p className="card-meta">
-                        {[it.code, it.category, it.weight ? `${it.weight} g` : "", p ? rupees(p.total) : "Price on request"].filter(Boolean).join(" · ")}
-                      </p>
-                      <p className="card-meta">
-                        {count(it.views, "view")} · {it.enquiries === 1 ? "1 enquiry" : `${it.enquiries} enquiries`}
-                      </p>
-                    </div>
-                    <div className="stepper" role="group" aria-label={`Stock for ${it.name}`}>
-                      <form action={setQty.bind(null, it.id, it.qty - 1)}>
-                        <button type="submit" aria-label="One less in stock" disabled={it.qty === 0}>
-                          <MinusIcon size={18} />
-                        </button>
-                      </form>
-                      <output aria-label="In stock">{it.qty}</output>
-                      <form action={setQty.bind(null, it.id, it.qty + 1)}>
-                        <button type="submit" aria-label="One more in stock">
-                          <PlusIcon size={18} />
-                        </button>
-                      </form>
-                    </div>
-                  </li>
-                );
-              })}
+          <ul className="rate-cards">
+            {s.rates.map((r) => {
+              const fresh = r.perGram > 0 && isToday(r.updatedAt);
+              return (
+                <li key={r.key} className={fresh ? "is-fresh" : "is-stale"}>
+                  <p className="rate-name">{r.label}</p>
+                  <p className="rate-value">{r.perGram ? `${rupees(r.perGram)}/g` : "Not set"}</p>
+                  <p className="help">
+                    {fresh ? <CheckIcon size={14} /> : <AlertIcon size={14} />} {r.updatedAt ? `${formatDayTime(r.updatedAt)} by ${r.updatedBy || "staff"}` : "Never updated"}
+                  </p>
+                  {!fresh && r.perGram > 0 && <p className="badge-warn">Not updated today: customers see a warning</p>}
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+
+        {attention.length > 0 && (
+          <section className="notice notice-warn" aria-label="Needs attention">
+            <ul>
+              {attention.map((a) => (
+                <li key={a}>{a}</li>
+              ))}
             </ul>
-          ) : (
-            <p className="muted">No items yet. Add the first piece with its photos and weight.</p>
-          )}
+          </section>
+        )}
+
+        <section className="quick-actions" aria-label="Shortcuts">
+          <Link href="/admin/item/new" className="btn btn-primary">
+            <PlusIcon size={18} /> Add Product
+          </Link>
+          <Link href="/admin/products" className="btn btn-quiet">
+            Manage Stock
+          </Link>
+          <Link href="/admin/qr" className="btn btn-quiet">
+            Counter QR
+          </Link>
+          <a href="/admin/export/backup.json" className="btn btn-quiet">
+            <DownloadIcon size={18} /> Backup
+          </a>
+        </section>
+
+        <section className="panel" aria-labelledby="pilot-title">
+          <h2 id="pilot-title">Pilot Report</h2>
+          <p className="help">Counts are from this site only. A WhatsApp “open” means the customer reached WhatsApp; it doesn’t mean they sent the message.</p>
+          <div className="table-scroll">
+            <table className="stats-table">
+              <thead>
+                <tr>
+                  <th scope="col">Measure</th>
+                  <th scope="col">Last 7 days</th>
+                  <th scope="col">Last 30 days</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(
+                  [
+                    ["Catalogue visits", week.visits, month.visits],
+                    ["Product views", week.views, month.views],
+                    ["Added to enquiry cart", week.cartAdds, month.cartAdds],
+                    ["WhatsApp opened", week.whatsapp, month.whatsapp],
+                    ["Enquiries confirmed by staff", week.confirmed, month.confirmed],
+                    ["Pieces marked sold", week.sold, month.sold],
+                    ["Estimated value sold", rupees(week.soldValue), rupees(month.soldValue)],
+                  ] as const
+                ).map(([k, a, b]) => (
+                  <tr key={k}>
+                    <th scope="row">{k}</th>
+                    <td>{a}</td>
+                    <td>{b}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="help">
+            Export for the client review: <a href="/admin/export/items.csv">Products CSV</a> · <a href="/admin/export/enquiries.csv">Enquiries CSV</a> ·{" "}
+            <a href="/admin/export/sales.csv">Sales CSV</a> · <a href="/admin/export/stats.csv">Daily stats CSV</a>
+          </p>
         </section>
 
         <section className="panel" aria-labelledby="enq-title">
-          <h2 id="enq-title">Recent Enquiries</h2>
-          <p className="help">Each time a customer taps “Send Enquiry on WhatsApp”. The message itself arrives on WhatsApp.</p>
+          <div className="panel-head">
+            <h2 id="enq-title">Latest Enquiries</h2>
+            <Link href="/admin/enquiries" className="text-link">
+              All Enquiries
+            </Link>
+          </div>
           {enquiries.length ? (
             <ul className="enq-list">
               {enquiries.map((e) => (
                 <li key={e._id.toHexString()}>
-                  <p className="card-meta">
-                    {formatDayTime(e.createdAt)} · Ref PJ-{e._id.toHexString().slice(-6).toUpperCase()}
+                  <p className="code">
+                    {formatDayTime(e.createdAt)} · Ref PJ-{e._id.toHexString().slice(-6).toUpperCase()} · {ENQUIRY_STATUSES[e.status]}
                   </p>
-                  <p>{e.items.map((i) => i.name).join(", ")}</p>
+                  <p>{e.items.map((i) => `${i.name}${i.qty > 1 ? ` ×${i.qty}` : ""}`).join(", ")}</p>
                   <p className="line-price">{rupees(e.total)}</p>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="muted">No enquiries yet. Print the counter QR so walk-in customers can browse.</p>
+            <p className="muted">No WhatsApp enquiries yet. Print the counter QR so walk-in customers can browse.</p>
           )}
-        </section>
-
-        <section className="panel" aria-labelledby="shop-title">
-          <h2 id="shop-title">Shop Details</h2>
-          <form action={saveSettings} className="form-grid settings-form">
-            <div className="field">
-              <label htmlFor="name">Shop name</label>
-              <input id="name" name="name" defaultValue={s.name} autoComplete="organization" required />
-            </div>
-            <div className="form-grid two">
-              <div className="field">
-                <label htmlFor="whatsapp">WhatsApp number for enquiries</label>
-                <input id="whatsapp" name="whatsapp" type="tel" inputMode="tel" defaultValue={s.whatsapp} autoComplete="off" placeholder="98765 43210…" />
-                <p className="help">10-digit mobile. Enquiries arrive here.</p>
-              </div>
-              <div className="field">
-                <label htmlFor="phone">Phone for calls</label>
-                <input id="phone" name="phone" type="tel" inputMode="tel" defaultValue={s.phone} autoComplete="off" placeholder="+91 98765 43210…" />
-              </div>
-            </div>
-            <div className="field">
-              <label htmlFor="address">Address</label>
-              <textarea id="address" name="address" rows={2} defaultValue={s.address} autoComplete="off" />
-            </div>
-            <div className="field">
-              <label htmlFor="instagram">Instagram handle</label>
-              <input id="instagram" name="instagram" defaultValue={s.instagram} autoComplete="off" spellCheck={false} placeholder="prakashjeweller…" />
-              <p className="help">Shown on the Contact page and footer.</p>
-            </div>
-            <div className="field">
-              <label htmlFor="theme">Colour theme</label>
-              <select id="theme" name="theme" defaultValue={s.theme}>
-                {Object.entries(THEMES).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-              <p className="help">
-                Preview before switching:{" "}
-                {Object.entries(THEMES).map(([value, label], i) => (
-                  <span key={value}>
-                    {i > 0 && " · "}
-                    <Link href={`/?theme=${value}`}>{label.split(":")[0]}</Link>
-                  </span>
-                ))}
-              </p>
-            </div>
-            <Submit>Save Details</Submit>
-          </form>
         </section>
       </main>
     </>
