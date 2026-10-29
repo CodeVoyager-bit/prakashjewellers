@@ -3,7 +3,7 @@ import { CartLink, CartToast, TabNav } from "@/components/cart";
 import { InstagramIcon, SearchIcon } from "@/components/icons";
 import { Logo } from "@/components/logo";
 import { RateBar } from "@/components/shop";
-import { TrackVisit } from "@/components/ui";
+import { InstallLink, TrackVisit } from "@/components/ui";
 import { getSettings } from "@/lib/data";
 
 export default async function ShopLayout({ children }: { children: React.ReactNode }) {
@@ -49,7 +49,7 @@ export default async function ShopLayout({ children }: { children: React.ReactNo
               <Link href="/visit">Directions &amp; Contact</Link>
             </div>
             <div className="foot-col">
-              <p className="foot-head">Follow</p>
+              <p className="foot-head">Connect</p>
               {s.instagram ? (
                 <a href={`https://instagram.com/${s.instagram}`} target="_blank" rel="noopener noreferrer">
                   <InstagramIcon size={18} /> @{s.instagram}
@@ -57,6 +57,7 @@ export default async function ShopLayout({ children }: { children: React.ReactNo
               ) : (
                 <span className="foot-placeholder">Instagram to be confirmed</span>
               )}
+              <InstallLink />
             </div>
           </div>
           <div className="foot-bottom">

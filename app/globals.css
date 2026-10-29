@@ -737,7 +737,9 @@ main:has(> .visit-band:last-child) + .site-foot { margin-top: 0; }
 .foot-grid { display: grid; gap: 36px; }
 .foot-col { display: grid; align-content: start; justify-items: start; gap: 8px; }
 .foot-col a { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; color: var(--foot-ink); text-decoration: none; }
-.foot-col a:hover { text-decoration: underline; text-underline-offset: 5px; }
+.foot-col a:hover, .foot-link:hover { text-decoration: underline; text-underline-offset: 5px; }
+.foot-link { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 0; border: 0; background: none; color: var(--foot-ink); font: inherit; cursor: pointer; }
+.foot-hint { max-width: 26ch; font-size: 0.875rem; }
 .foot-col p { color: var(--foot-muted); }
 .foot-head { margin-bottom: 4px; color: var(--foot-ink) !important; font-size: var(--caps); font-weight: 500; letter-spacing: 0.22em; text-transform: uppercase; }
 .foot-brand p:not(.foot-mark) { max-width: 32ch; }

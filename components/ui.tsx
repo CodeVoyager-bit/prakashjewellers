@@ -164,17 +164,28 @@ export function Gallery({ id, photos, name }: { id: string; photos: string[]; na
 
 type PwaWindow = Window & { pwaPrompt?: { prompt(): Promise<unknown> } };
 
+// "prompt": the browser can install the site (Chrome, Edge, Android); "ios": only by hand from the Share menu;
+// "": already running as an installed app, or a browser that can't install it.
 const subscribeInstall = (cb: () => void) => {
-  addEventListener("beforeinstallprompt", cb);
-  return () => removeEventListener("beforeinstallprompt", cb);
+  const events = ["beforeinstallprompt", "appinstalled", "pwa-used"];
+  events.forEach((e) => addEventListener(e, cb));
+  return () => events.forEach((e) => removeEventListener(e, cb));
 };
 const installMode = () =>
   matchMedia("(display-mode: standalone)").matches ? "" : (window as PwaWindow).pwaPrompt ? "prompt" : /iPhone|iPad|iPod/.test(navigator.userAgent) ? "ios" : "";
+const useInstallMode = () => useSyncExternalStore(subscribeInstall, installMode, () => "");
+// The browser's prompt works once per page load, so drop it after use and let the buttons hide.
+function promptInstall() {
+  const w = window as PwaWindow;
+  w.pwaPrompt?.prompt().catch(() => {});
+  w.pwaPrompt = undefined;
+  dispatchEvent(new Event("pwa-used"));
+}
 
 // A row for the Contact page: Chrome's install prompt where the browser offers one, the Share-menu hint on iPhone.
 // Hidden once the site is already running as an installed app.
 export function InstallApp({ name }: { name: string }) {
-  const mode = useSyncExternalStore(subscribeInstall, installMode, () => "");
+  const mode = useInstallMode();
   if (!mode) return null;
   return (
     <li>
@@ -186,11 +197,26 @@ export function InstallApp({ name }: { name: string }) {
         <p>{mode === "ios" ? "Tap Share, then “Add to Home Screen”." : `Add ${name} to your home screen.`}</p>
       </div>
       {mode === "prompt" && (
-        <button type="button" className="btn btn-quiet btn-sm" onClick={() => (window as PwaWindow).pwaPrompt?.prompt().catch(() => {})}>
+        <button type="button" className="btn btn-quiet btn-sm" onClick={promptInstall}>
           Install App
         </button>
       )}
     </li>
+  );
+}
+
+// Footer link: the same install prompt, or on iPhone the steps, shown on tap.
+export function InstallLink() {
+  const mode = useInstallMode();
+  const [steps, setSteps] = useState(false);
+  if (!mode) return null;
+  return (
+    <>
+      <button type="button" className="foot-link" aria-expanded={mode === "ios" ? steps : undefined} onClick={mode === "prompt" ? promptInstall : () => setSteps(!steps)}>
+        <AppIcon size={18} /> Install the App
+      </button>
+      {steps && <p className="foot-hint">In Safari, tap Share, then “Add to Home Screen”.</p>}
+    </>
   );
 }
 
