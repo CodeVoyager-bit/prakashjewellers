@@ -12,7 +12,8 @@
     "demo:add": "node --env-file=.env.local scripts/demo-data.mjs add",
     "demo:remove": "node --env-file=.env.local scripts/demo-data.mjs remove",
     "icons": "node scripts/make-icons.mjs",
-    "db:indexes": "node --env-file=.env.local scripts/db-indexes.mjs"
+    "db:indexes": "node --env-file=.env.local scripts/db-indexes.mjs",
+    "stats:reset": "node --env-file=.env.local scripts/reset-stats.mjs"
   },
   "dependencies": {
     "better-auth": "^1.7.14",

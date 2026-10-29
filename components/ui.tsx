@@ -16,12 +16,19 @@ export function track(e: "visit" | "view" | "cart" | "whatsapp", id?: string) {
   } catch {}
 }
 
+// Once per piece per browsing session: refreshing the page (or React running the effect twice in development)
+// doesn't count again.
 export function TrackView({ id }: { id: string }) {
-  useEffect(() => track("view", id), [id]);
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem(`pj-viewed-${id}`)) return;
+      sessionStorage.setItem(`pj-viewed-${id}`, "1");
+    } catch {}
+    track("view", id);
+  }, [id]);
   return null;
 }
 
-// One "visit" per browsing session.
 // Header search: opens the collections page at its search box, or on that page puts the cursor straight in it.
 export function SearchLink() {
   const path = usePathname();
@@ -49,6 +56,7 @@ export function FocusSearch() {
   return null;
 }
 
+// One "visit" per browsing session.
 export function TrackVisit() {
   useEffect(() => {
     try {

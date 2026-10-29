@@ -213,7 +213,7 @@ export function StatTile({ label, values, i }: { label: string; values: number[]
         <p className={`delta delta-${dir}`}>
           <span aria-hidden="true">{dir === "up" ? "↑" : dir === "down" ? "↓" : "→"}</span>{" "}
           {dir === "flat" ? "No change" : pct !== null ? `${diff > 0 ? "+" : ""}${pct}%` : `+${diff}`}
-          <span className="delta-vs"> in the last 7 full days, vs the 7 before</span>
+          <span className="delta-vs"> in the last 7 days including today, vs the 7 before</span>
         </p>
         <Sparkline values={values} />
       </div>

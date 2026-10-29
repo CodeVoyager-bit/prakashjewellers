@@ -17,11 +17,10 @@ const greeting = () => {
 
 export default async function Dashboard() {
   const session = await requireStaff();
-  const [s, items, recent, month, enquiries] = await Promise.all([getSettings(), getAllItems(), getStats(15), getStats(30), getEnquiries(5)]);
+  const [s, items, recent, month, enquiries] = await Promise.all([getSettings(), getAllItems(), getStats(14), getStats(30), getEnquiries(5)]);
   const live = items.filter((i) => i.status === "live");
-  // Tiles compare whole days (the 7 to yesterday against the 7 before), so an unfinished today doesn't
-  // read as a drop every morning. The chart shows the last 14 days including today.
-  const series = (k: "visits" | "views" | "cartAdds" | "whatsapp") => recent.days.slice(0, 14).map((d) => d[k] ?? 0);
+  // Tiles and chart both cover the last 14 days including today, so they always agree.
+  const series = (k: "visits" | "views" | "cartAdds" | "whatsapp") => recent.days.map((d) => d[k] ?? 0);
   const main = s.rates.find((r) => r.perGram) ?? s.rates[0];
   const fresh = main.perGram > 0 && isToday(main.updatedAt);
   const top = [...live].sort((a, b) => b.views - a.views || b.enquiries - a.enquiries).slice(0, 5);
@@ -109,7 +108,7 @@ export default async function Dashboard() {
 
         <section className="dash-mid">
           <div className="dash-card rise" style={{ "--i": 5 } as React.CSSProperties} aria-labelledby="activity-title">
-            <ActivityChart days={recent.days.slice(1)} />
+            <ActivityChart days={recent.days} />
           </div>
           <div className="dash-card rise" style={{ "--i": 6 } as React.CSSProperties} aria-labelledby="top-title">
             <div className="card-head">
