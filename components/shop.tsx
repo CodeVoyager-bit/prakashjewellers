@@ -4,7 +4,8 @@ import type { Item, Settings } from "@/lib/data";
 import { priceFor } from "@/lib/data";
 import { billableWeight, formatDay, formatDayTime, formatTime, isToday, rupees, type Price, type Rate } from "@/lib/price";
 import { CardAdd } from "./cart";
-import { AlertIcon, GemIcon, PhoneIcon, SearchIcon } from "./icons";
+import { AlertIcon, PhoneIcon, SearchIcon } from "./icons";
+import { Monogram } from "./logo";
 import { Photo } from "./photo";
 
 export { Photo };
@@ -211,7 +212,7 @@ export function SectionHead({ id, title, eyebrow, link }: { id?: string; title: 
 export function Empty({ title, children, phone, action }: { title: string; children: React.ReactNode; phone?: string; action?: React.ReactNode }) {
   return (
     <div className="empty">
-      <GemIcon size={36} />
+      <Monogram size={44} />
       <h2>{title}</h2>
       <p className="muted">{children}</p>
       {action}

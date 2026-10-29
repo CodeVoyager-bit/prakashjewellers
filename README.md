@@ -66,6 +66,8 @@ Signed-in staff can download `/admin/export/items.csv`, `enquiries.csv`, `sales.
 
 The site installs as an app, so customers get the shop's icon on their home screen and a full-screen catalogue: on Android, Chrome offers **Install** (also a button on the Contact page); on iPhone, **Share → Add to Home Screen**. It is the same site, so prices stay live and there is nothing separate to update. For a Play Store listing, wrap the live address with [PWABuilder](https://www.pwabuilder.com) once the final domain is set.
 
+The favicon, home-screen icons and the card shown when a link is shared on WhatsApp are all drawn from the PJ monogram by `npm run icons` (needs internet for the logo font). If the store sends its original logo artwork, update the monogram in `components/logo.tsx` and `scripts/make-icons.mjs`, then run it again.
+
 ## Demo data
 
 `npm run demo:add` loads 8 sample pieces (7 designs; one design has two pieces of different weights) with free Unsplash photos, and sets a sample 22K rate if none is set. Sample pieces are labelled “Sample” on the site. **Run `npm run demo:remove` before go-live.** It deletes every sample piece (even ones edited in admin), its photos, enquiries and sales. If nothing else is left, design codes and piece numbers restart and the pilot stats start clean.

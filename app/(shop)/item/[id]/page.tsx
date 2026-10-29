@@ -21,7 +21,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (item.status !== "live") return {};
   const cover = item.photos[0];
   const title = [item.name, item.code].filter(Boolean).join(" · ");
-  return { title, openGraph: { title, images: cover ? [cloudinaryLoader({ src: cover, width: 1200 })] : [] } };
+  // No photo yet: set no openGraph at all, which would drop the store’s logo card that shared links inherit.
+  if (!cover) return { title };
+  return { title, openGraph: { title, images: [cloudinaryLoader({ src: cover, width: 1200 })] } };
 }
 
 export default async function ItemPage({ params }: Props) {
