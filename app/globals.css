@@ -251,15 +251,17 @@ button { font: inherit; color: inherit; }
 .ratebar a:hover { text-decoration: underline; text-underline-offset: 4px; }
 .ratebar-when { opacity: 0.85; }
 @media (max-width: 599px) { .ratebar-when:not(.is-stale) { display: none; } }
+@media (max-width: 399px) { .ratebar { letter-spacing: 0.06em; } }
 .ratebar-when.is-stale { color: #ffd9a0; opacity: 1; }
 
-/* Header: search · centred wordmark · cart; on desktop the nav runs beneath in spaced capitals */
+/* Header: logo on the left, search and cart on the right; desktop adds the menu between them */
 .site-head { position: sticky; top: 0; z-index: 20; padding-top: env(safe-area-inset-top); border-bottom: 1px solid var(--line); background: var(--surface); }
-.head-row { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; grid-template-areas: "search mark cart"; align-items: center; min-height: 56px; }
+.head-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; grid-template-areas: "mark search cart"; align-items: center; min-height: 60px; }
 /* Scoped to the header: a named area on the footer's wordmark would make the footer grid invent extra columns. */
-.head-row > .brandmark { grid-area: mark; justify-self: center; display: inline-flex; text-decoration: none; }
+.head-row > .brandmark { grid-area: mark; justify-self: start; display: inline-flex; text-decoration: none; }
 .head-search { grid-area: search; }
-.head-cart { grid-area: cart; }
+/* The 44px tap area centres the icon; pulling it out lines the icon up with the page edge, like the logo. */
+.head-cart { grid-area: cart; margin-right: -11px; }
 
 /* Tabs: a slim bottom bar on phones (Home / Collections / Enquiry Cart / Contact), the nav row on desktop */
 .tabs {
@@ -297,7 +299,6 @@ body { padding-bottom: calc(var(--tabbar) + env(safe-area-inset-bottom)); }
   .site-head { background: color-mix(in srgb, var(--surface) 88%, transparent); -webkit-backdrop-filter: saturate(1.5) blur(14px); backdrop-filter: saturate(1.5) blur(14px); }
   /* One slim row: logo, menu, search and cart. */
   .head-row { grid-template-columns: auto 1fr auto auto; grid-template-areas: "mark tabs search cart"; min-height: 68px; }
-  .head-row > .brandmark { justify-self: start; }
   .tabs { grid-area: tabs; position: static; display: flex; justify-content: center; gap: clamp(0px, 1.2vw, 16px); padding: 0; border: 0; background: none; }
   .tab { flex-direction: row; align-self: stretch; padding: 0 14px; color: var(--ink-2); font-size: 0.75rem; letter-spacing: 0.2em; text-transform: uppercase; }
   .tab:hover, .tab[aria-current] { color: var(--ink); }
@@ -996,8 +997,8 @@ body:has(.admin-bar) .btn { min-height: 44px; padding: 0 18px; letter-spacing: 0
 .logo-compact .logo-name, .logo-compact .logo-sub { background: none; }
 .logo-compact .logo-name { color: var(--ink); }
 .logo-compact .logo-sub { color: var(--gold-ink); }
-.logo-compact .logo-mark { width: 28px; }
-.logo-compact .logo-name { font-size: clamp(1.0625rem, 5vw, 1.3125rem); }
+.logo-compact .logo-mark { width: 30px; }
+.logo-compact .logo-name { font-size: clamp(1.125rem, 5.4vw, 1.375rem); }
 .logo-compact .logo-sub { font-size: 0.5625rem; letter-spacing: 0.4em; margin-right: -0.4em; }
 @media (min-width: 900px) {
   .logo-compact { gap: 12px; }

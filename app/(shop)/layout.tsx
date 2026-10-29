@@ -15,17 +15,17 @@ export default async function ShopLayout({ children }: { children: React.ReactNo
         Skip to Content
       </a>
       <RateBar rates={s.rates} />
-      {/* Phones: search, centred logo, cart (tabs are a bottom bar). Desktop: one row of logo, menu, search, cart. */}
+      {/* Logo left, search and cart right; the menu sits between them on desktop and is a bottom tab bar on phones. */}
       <header className="site-head">
         <div className="wrap head-row">
-          <Link href="/collections#q" className="icon-btn head-search" aria-label="Search by name or design code">
-            <SearchIcon size={20} />
-          </Link>
           <Link href="/" className="brandmark" aria-label={`${s.name}, home`} translate="no">
             <Logo compact />
           </Link>
-          <CartLink />
           <TabNav />
+          <Link href="/collections#q" className="icon-btn head-search" aria-label="Search by name or design code">
+            <SearchIcon size={20} />
+          </Link>
+          <CartLink />
         </div>
       </header>
       <CartToast />
