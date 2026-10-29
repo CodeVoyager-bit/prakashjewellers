@@ -142,7 +142,7 @@ export function PieceActions({ id, available, seen, phone, name, photo }: { id: 
       {available > 0 ? (
         inCart ? (
           <Link href="/cart" className="btn btn-quiet btn-block item-cart">
-            <CheckIcon size={18} /> <Label long="In Enquiry Cart · View" short="In Cart · View" />
+            <CheckIcon size={18} /> <Label long="In Enquiry Cart · View" short="View Cart" />
           </Link>
         ) : (
           <button

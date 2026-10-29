@@ -787,7 +787,7 @@ export function StockList({ items, prices }: { items: Item[]; prices: Record<str
         <label className="search">
           <SearchIcon size={20} />
           <span className="sr-only">Search products</span>
-          <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, code or piece number…" autoComplete="off" />
+          <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Name, code or piece no.…" aria-label="Search by name, design code or piece number" autoComplete="off" />
         </label>
         <div className="chips" role="group" aria-label="Show">
           {Object.entries(tabs).map(([k, label]) => (
