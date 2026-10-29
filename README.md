@@ -35,14 +35,22 @@ npm install
 ```
 
 ```bash
+npm run db:indexes
+```
+
+```bash
 npm run add-staff -- 9876543210 'a-strong-password' "Owner Name"
 ```
+
+`db:indexes` creates the database indexes the site relies on (catalogue, enquiries, sales and the login tables). It is safe to run again. It also makes MongoDB clear enquiry drafts that never reached WhatsApp after a day, and expired login sessions.
 
 This creates the first login, an **owner**. Staff sign in at `/admin` with that mobile number and password. From then on, owners add, reset and remove logins on the **Staff** page in the admin; a login marked Staff (not Owner) can use the admin but can't manage logins. The command still works to reset any password if an owner is locked out. Logins are stored with an internal key, `91<number>@staff.invalid`, that is never mailed.
 
 ## Deploy (Vercel)
 
 Import the GitHub repo in Vercel, add the six variables from `.env.example` (with `BETTER_AUTH_URL` set to the `https://….vercel.app` address), and deploy. Every push to `main` redeploys.
+
+**Caching:** customer pages read the shop settings and catalogue through Next.js's data cache, so most visits don't touch MongoDB. Every staff change (rates, products, stock, settings) clears it immediately; it also refreshes on its own every 10 minutes, which covers edits made directly in Atlas or by the demo-data script.
 
 `vercel.json` runs the server in Mumbai (`bom1`), next to the Atlas cluster in AWS `ap-south-1`, and adds basic security headers. If the cluster ever moves region, change `regions` to match.
 

@@ -71,7 +71,7 @@ export default async function SettingsPage() {
             <h2>Look</h2>
             <div className="field">
               <label htmlFor="theme">Theme</label>
-              <select id="theme" name="theme" defaultValue={s.theme}>
+              <select id="theme" name="theme" defaultValue={s.theme} key={s.theme}>
                 {Object.entries(THEMES).map(([value, label]) => (
                   <option key={value} value={value}>
                     {label}

@@ -10,6 +10,7 @@ export async function POST(req: Request) {
   } catch {
     return new Response(null, { status: 400 });
   }
+  if (!body || typeof body !== "object") return new Response(null, { status: 400 });
   const _id = oid(String(body.id ?? ""));
   switch (body.e) {
     case "visit":

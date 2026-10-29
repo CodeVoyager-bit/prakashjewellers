@@ -8,7 +8,9 @@ export const THEMES = {
   emerald: "Emerald Art Deco",
 } as const;
 export type Theme = keyof typeof THEMES;
-export const isTheme = (t: unknown): t is Theme => typeof t === "string" && t in THEMES;
+// Own keys only: `"toString" in THEMES` is true, so plain `in` would let any inherited name through.
+const own = (o: object, k: unknown) => typeof k === "string" && Object.hasOwn(o, k);
+export const isTheme = (t: unknown): t is Theme => own(THEMES, t);
 
 // Optional rows in the product details table, in display order.
 export const DETAILS = {
@@ -28,6 +30,7 @@ export const STATUSES = {
   archived: "Archived: hidden, kept for records",
 } as const;
 export type Status = keyof typeof STATUSES;
+export const isStatus = (s: unknown): s is Status => own(STATUSES, s);
 
 export const ENQUIRY_STATUSES = {
   opened: "Opened WhatsApp",
@@ -35,6 +38,7 @@ export const ENQUIRY_STATUSES = {
   closed: "Not proceeding",
 } as const;
 export type EnquiryStatus = keyof typeof ENQUIRY_STATUSES;
+export const isEnquiryStatus = (s: unknown): s is EnquiryStatus => own(ENQUIRY_STATUSES, s);
 
 // Browser chrome (header surface) and page background per theme; also the installed app's splash colours.
 export const THEME_COLORS: Record<Theme, { head: string; bg: string }> = {

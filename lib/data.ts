@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import { cache } from "react";
 import { ObjectId, type Filter, type WithId } from "mongodb";
 import { codePattern } from "./codes.mjs";
@@ -66,7 +67,9 @@ export const enquiriesDb = db.collection<EnquiryDoc>("enquiries");
 export const salesDb = db.collection<SaleDoc>("sales");
 export const statsDb = db.collection<StatDoc>("stats");
 
-const DEFAULT_RATE: Rate = { key: "22k", label: "22K gold", perGram: 0, updatedAt: null, updatedBy: "" };
+// Pieces saved before rate categories existed have no rateKey and are priced at this one (see toItem).
+export const DEFAULT_RATE_KEY = "22k";
+const DEFAULT_RATE: Rate = { key: DEFAULT_RATE_KEY, label: "22K gold", perGram: 0, updatedAt: null, updatedBy: "" };
 const DEFAULTS: Settings = {
   name: "Prakash Jewellers",
   whatsapp: "",
@@ -80,14 +83,23 @@ const DEFAULTS: Settings = {
   rates: [DEFAULT_RATE],
 };
 
+// Customer-facing reads go through Next's data cache, so most page views skip MongoDB. Every staff change
+// expires the tag at once (updateTag in the admin actions); the 10-minute refresh covers edits made outside
+// the app, such as the demo-data script. The cache stores JSON, so dates come back as strings: see `date`.
+export const CATALOGUE = "catalogue";
+const shared = <A extends string[], R>(key: string, fn: (...args: A) => Promise<R>) => unstable_cache(fn, [key], { tags: [CATALOGUE], revalidate: 600 });
+const date = (d: Date | string | null | undefined) => (d ? new Date(d) : null);
+
+const readSettings = shared("settings", () => settingsDb.findOne({ _id: "shop" }, { projection: { _id: 0 } }));
+
 // cache(): layout, page and metadata share one read per request.
 export const getSettings = cache(async (): Promise<Settings> => {
-  const found = await settingsDb.findOne({ _id: "shop" }, { projection: { _id: 0 } });
+  const found = await readSettings();
   const { rate, rateAt, ...doc } = found ?? ({} as NonNullable<typeof found>);
   const s = { ...DEFAULTS, ...doc };
   // Earlier versions kept a single 22K rate.
   const rates = doc.rates ?? (rate ? [{ ...DEFAULT_RATE, perGram: rate, updatedAt: rateAt ?? null }] : DEFAULTS.rates);
-  return { ...s, rates, theme: isTheme(s.theme) ? s.theme : DEFAULTS.theme };
+  return { ...s, rates: rates.map((r) => ({ ...r, updatedAt: date(r.updatedAt) })), theme: isTheme(s.theme) ? s.theme : DEFAULTS.theme };
 });
 
 export const toItem = ({ _id, ...d }: WithId<Partial<ItemDoc>>): Item => ({
@@ -98,7 +110,7 @@ export const toItem = ({ _id, ...d }: WithId<Partial<ItemDoc>>): Item => ({
   status: "live",
   featured: false,
   demo: false,
-  pricing: d.fixedPrice && !d.weight ? "fixed" : "weight",
+  pricing: d.fixedPrice ? "fixed" : "weight", // older pieces: a fixed price, when set, came first
   rateKey: DEFAULT_RATE.key,
   weight: 0,
   netWeight: null,
@@ -127,19 +139,29 @@ const VISIBLE = { status: { $nin: ["draft", "archived"] as Status[] } };
 export type Sort = "new" | "price-asc" | "price-desc" | "weight";
 export type Avail = "all" | "in" | "out";
 
+const revive = (i: Item): Item => ({ ...i, createdAt: date(i.createdAt)! });
+
 // Customer catalogue: live pieces only.
-export async function getItems({ category, q, avail = "all" }: { category?: string; q?: string; avail?: Avail } = {}) {
+const findItems = async (category: string, query: string, avail: string) => {
   const filter: Filter<ItemDoc> = { ...VISIBLE };
   if (category) filter.category = category;
   if (avail === "in") filter.qty = { $gt: 0 };
   if (avail === "out") filter.qty = { $lte: 0 };
-  const query = q?.trim().slice(0, 60);
   if (query) {
     const text = new RegExp(escape(query), "i");
     const code = codePattern(query);
     filter.$or = [{ name: text }, { category: text }, ...(code ? [{ code }] : [])];
   }
   return (await itemsDb.find(filter).sort({ createdAt: -1 }).toArray()).map(toItem);
+};
+const readItems = shared("items", findItems);
+export async function getItems({ category, q, avail = "all" }: { category?: string; q?: string; avail?: Avail } = {}) {
+  const query = q?.trim().slice(0, 60) ?? "";
+  const cat = category ?? "";
+  // Only browsing is cached. Searches and unknown categories go straight to the database, so made-up URLs
+  // can't fill the cache with an entry each.
+  const cacheable = !query && (!cat || (await getCategories()).includes(cat));
+  return (await (cacheable ? readItems : findItems)(cat, query, avail)).map(revive);
 }
 
 // Pieces priced on request sort last either way.
@@ -160,11 +182,20 @@ export async function getAllItems() {
   return (await itemsDb.find().sort({ createdAt: -1 }).toArray()).map(toItem);
 }
 
+// Live read, for staff pages and actions that check stock before changing it.
 export async function getItem(id: string) {
   const _id = oid(id);
   const doc = _id && (await itemsDb.findOne({ _id }));
   return doc ? toItem(doc) : null;
 }
+
+// The product page and its metadata, through the cache (and once per request).
+const readShopItem = shared("item", getItem);
+export const getShopItem = cache(async (id: string) => {
+  if (!oid(id)) return null; // no cache entry per made-up id
+  const i = await readShopItem(id);
+  return i && revive(i);
+});
 
 // Each category with the cover photo of its newest piece, for the collection tiles.
 export function collections(items: Item[]) {
@@ -173,9 +204,7 @@ export function collections(items: Item[]) {
   return [...seen].map(([name, photo]) => ({ name, photo })).sort((a, b) => a.name.localeCompare(b.name));
 }
 
-export async function getCategories(all = false) {
-  return ((await itemsDb.distinct("category", all ? {} : VISIBLE)) as string[]).filter(Boolean).sort();
-}
+export const getCategories = shared("categories", async (all?: string) => ((await itemsDb.distinct("category", all ? {} : VISIBLE)) as string[]).filter(Boolean).sort());
 
 export type CartLine = {
   id: string;

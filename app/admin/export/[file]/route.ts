@@ -1,3 +1,4 @@
+import { BSON } from "mongodb";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -11,8 +12,8 @@ export async function GET(_: Request, { params }: { params: Promise<{ file: stri
   if (!(await auth.api.getSession({ headers: await headers() }))) return new Response("Sign in first", { status: 401 });
   const { file } = await params;
   const stamp = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
-  const send = (body: string, type: string, name: string) =>
-    new Response(body, { headers: { "Content-Type": type, "Content-Disposition": `attachment; filename="prakash-${name}-${stamp}${name.endsWith("json") ? "" : ".csv"}"` } });
+  const send = (body: string, type: string, name: string, ext = "csv") =>
+    new Response(body, { headers: { "Content-Type": type, "Content-Disposition": `attachment; filename="prakash-${name}-${stamp}.${ext}"` } });
 
   if (file === "items.csv") {
     const [s, items] = await Promise.all([getSettings(), getAllItems()]);
@@ -44,7 +45,8 @@ export async function GET(_: Request, { params }: { params: Promise<{ file: stri
   if (file === "backup.json") {
     const names = ["settings", "items", "enquiries", "sales", "stats", "counters"];
     const dump = Object.fromEntries(await Promise.all(names.map(async (n) => [n, await db.collection(n).find().toArray()] as const)));
-    return send(JSON.stringify({ exportedAt: new Date(), ...dump }, null, 2), "application/json", "backup.json");
+    // Extended JSON keeps ObjectIds and dates as their real types, so the backup can be restored as it was.
+    return send(BSON.EJSON.stringify({ exportedAt: new Date(), ...dump }, undefined, 2, { relaxed: true }), "application/json", "backup", "json");
   }
   return new Response("Not found", { status: 404 });
 }

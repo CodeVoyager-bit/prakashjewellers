@@ -2,24 +2,26 @@
 
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { auth, isOwner, requireStaff } from "@/lib/auth";
 import { sign } from "@/lib/cloudinary.mjs";
 import { nextCode, nextPiece } from "@/lib/codes.mjs";
 import { db } from "@/lib/db";
 import {
+  CATALOGUE,
+  DEFAULT_RATE_KEY,
   DETAILS,
-  ENQUIRY_STATUSES,
   enquiriesDb,
   getItem,
   getSettings,
+  isEnquiryStatus,
+  isStatus,
   isTheme,
   itemsDb,
   oid,
   priceFor,
   salesDb,
   settingsDb,
-  STATUSES,
   type DetailKey,
   type EnquiryStatus,
   type Status,
@@ -28,11 +30,16 @@ import { perGram, rupees } from "@/lib/price";
 import { staffEmail } from "@/lib/staff-email.mjs";
 
 const text = (fd: FormData, k: string, max = 200) => String(fd.get(k) ?? "").trim().slice(0, max);
+// Tolerates what staff naturally type: "1,250", "₹5000", "10%", "12.4 g".
 const num = (fd: FormData, k: string) => {
-  const v = text(fd, k).replace(/,/g, "");
+  const v = text(fd, k).replace(/[,₹%\s]/g, "").replace(/(gms?|grams?|g)$/i, "");
   return v === "" ? null : Number(v);
 };
-const done = () => revalidatePath("/", "layout");
+// After any change customers can see: expire the cached catalogue and settings, and re-render every page.
+const done = () => {
+  updateTag(CATALOGUE);
+  revalidatePath("/", "layout");
+};
 const staffName = async () => (await requireStaff()).user.name || "Staff";
 
 // Daily rates: only the categories typed in are updated, each stamped with who and when.
@@ -55,7 +62,7 @@ export async function saveRates(_: unknown, fd: FormData): Promise<string> {
     const g = Math.round(perGram(v, unit) * 100) / 100;
     if (g > 1_000_000) return `${r.label}: ${v} per ${unit === "g" ? "gram" : "10 g"} looks too high. Check the unit.`;
     // A wrong unit is a 10× error on every price, so big jumps need an explicit tick.
-    if (r.perGram && fd.get("allowBig") !== "on" && (g > r.perGram * 1.5 || g < r.perGram / 1.5))
+    if (r.perGram && fd.get("allowBig") !== "on" && (g > r.perGram * 1.5 || g < r.perGram * 0.5))
       return `${r.label}: ${rupees(g)} per gram is more than 50% ${g > r.perGram ? "above" : "below"} the current ${rupees(r.perGram)}. Check the unit (per gram or per 10 g). If it’s right, tick “Allow a big change” and save again.`;
     Object.assign(r, { perGram: g, updatedAt: new Date(), updatedBy: by });
     updated++;
@@ -68,7 +75,7 @@ export async function saveRates(_: unknown, fd: FormData): Promise<string> {
 
 export async function removeRate(key: string) {
   await requireStaff();
-  if (await itemsDb.countDocuments({ rateKey: key })) return;
+  if (await itemsDb.countDocuments(key === DEFAULT_RATE_KEY ? { $or: [{ rateKey: key }, { rateKey: { $exists: false } }] } : { rateKey: key })) return;
   const s = await getSettings();
   if (s.rates.length < 2) return;
   await settingsDb.updateOne({ _id: "shop" }, { $set: { rates: s.rates.filter((r) => r.key !== key) } });
@@ -78,7 +85,7 @@ export async function removeRate(key: string) {
 export async function saveSettings(fd: FormData) {
   await requireStaff();
   const s = await getSettings();
-  const wa = text(fd, "whatsapp").replace(/\D/g, "");
+  const wa = text(fd, "whatsapp").replace(/\D/g, "").replace(/^0+/, ""); // "098765…" is a 10-digit number too
   const pct = (k: string, fallback: number) => {
     const v = num(fd, k);
     return v !== null && v >= 0 && v <= 100 ? v : fallback;
@@ -122,7 +129,7 @@ export async function saveItem(_: unknown, fd: FormData): Promise<string> {
     name: text(fd, "name"),
     category: text(fd, "category", 60),
     description: text(fd, "description", 1000),
-    status: status in STATUSES ? status : "draft",
+    status: isStatus(status) ? status : "draft",
     featured: fd.get("featured") === "on",
     pricing,
     rateKey: text(fd, "rateKey", 40) || s.rates[0].key,
@@ -151,7 +158,9 @@ export async function saveItem(_: unknown, fd: FormData): Promise<string> {
   if (code && !/^[A-Z0-9-]+$/.test(code)) return "Design codes use letters, numbers and dashes only, like PJ-024.";
 
   const _id = oid(text(fd, "id"));
-  if (_id) await itemsDb.updateOne({ _id }, { $set: { ...item, ...(code && { code }) } });
+  // Stock is written only when staff changed it here, so a sale marked meanwhile isn't undone by this save.
+  const { qty: stock, ...rest } = item;
+  if (_id) await itemsDb.updateOne({ _id }, { $set: { ...rest, ...(code && { code }), ...(stock !== num(fd, "qtyWas") && { qty: stock }) } });
   else
     await itemsDb.insertOne({
       ...item,
@@ -193,14 +202,16 @@ export async function duplicateItem(id: string) {
 export async function setStatus(id: string, status: Status) {
   await requireStaff();
   const _id = oid(id);
-  if (_id && status in STATUSES) await itemsDb.updateOne({ _id }, { $set: { status } });
+  if (_id && isStatus(status)) await itemsDb.updateOne({ _id }, { $set: { status } });
   done();
 }
 
-export async function setQty(id: string, qty: number) {
+// One more or one fewer, applied in the database: quick taps all count, and a sale marked meanwhile stays.
+export async function setQty(id: string, delta: number) {
   await requireStaff();
   const _id = oid(id);
-  if (_id && Number.isInteger(qty) && qty >= 0) await itemsDb.updateOne({ _id }, { $set: { qty } });
+  if (!_id || (delta !== 1 && delta !== -1)) return;
+  await itemsDb.updateOne({ _id, ...(delta < 0 && { qty: { $gt: 0 } }) }, { $inc: { qty: delta } });
   done();
 }
 
@@ -209,10 +220,9 @@ export async function markSold(id: string) {
   const by = await staffName();
   const [item, s] = await Promise.all([getItem(id), getSettings()]);
   if (!item || item.qty < 1) return;
-  await Promise.all([
-    itemsDb.updateOne({ _id: oid(id)!, qty: { $gt: 0 } }, { $inc: { qty: -1 } }),
-    salesDb.insertOne({ itemId: id, code: item.code, piece: item.piece, name: item.name, estimate: priceFor(item, s)?.total ?? null, by, at: new Date() }),
-  ]);
+  // The sale is logged only if this tap actually took one off, so a double tap can't log two.
+  const { modifiedCount } = await itemsDb.updateOne({ _id: oid(id)!, qty: { $gt: 0 } }, { $inc: { qty: -1 } });
+  if (modifiedCount) await salesDb.insertOne({ itemId: id, code: item.code, piece: item.piece, name: item.name, estimate: priceFor(item, s)?.total ?? null, by, at: new Date() });
   done();
 }
 
@@ -227,7 +237,7 @@ export async function deleteItem(id: string) {
 export async function setEnquiryStatus(id: string, status: EnquiryStatus) {
   await requireStaff();
   const _id = oid(id);
-  if (_id && status in ENQUIRY_STATUSES) await enquiriesDb.updateOne({ _id }, { $set: { status } });
+  if (_id && isEnquiryStatus(status)) await enquiriesDb.updateOne({ _id }, { $set: { status } });
   revalidatePath("/admin", "layout");
 }
 
@@ -278,8 +288,9 @@ export async function resetStaffPassword(id: string, password: string): Promise<
   const ctx = await auth.$context;
   if (!(await ctx.internalAdapter.findUserById(id))) return "That login no longer exists.";
   await ctx.internalAdapter.updatePassword(id, await ctx.password.hash(password));
-  // Someone else's devices are signed out, so the old password stops working everywhere at once.
-  if (id !== me.user.id) await ctx.internalAdapter.deleteUserSessions(id);
+  // Signed out on every other device (for an owner's own reset, all but this one, say after a lost phone).
+  const others = (await ctx.internalAdapter.listSessions(id)).filter((x) => x.token !== me.session.token).map((x) => x.token);
+  if (others.length) await ctx.internalAdapter.deleteSessions(others);
   return "";
 }
 

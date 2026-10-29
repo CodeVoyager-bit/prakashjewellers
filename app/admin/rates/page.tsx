@@ -1,7 +1,8 @@
 import { RatesForm } from "@/components/admin";
 import { AdminBar } from "@/components/admin-bar";
+import { ConfirmForm } from "@/components/ui";
 import { requireStaff } from "@/lib/auth";
-import { getSettings, itemsDb } from "@/lib/data";
+import { DEFAULT_RATE_KEY, getSettings, itemsDb } from "@/lib/data";
 import { removeRate } from "../actions";
 
 export const metadata = { title: "Daily Rates", robots: { index: false } };
@@ -10,6 +11,8 @@ export default async function RatesPage() {
   await requireStaff();
   const s = await getSettings();
   const inUse = new Set((await itemsDb.distinct("rateKey")) as string[]);
+  // Pieces from before rate categories existed have no rateKey and use the default one.
+  if (await itemsDb.countDocuments({ rateKey: { $exists: false } })) inUse.add(DEFAULT_RATE_KEY);
   return (
     <>
       <AdminBar name={s.name} current="/admin/rates" />
@@ -31,11 +34,11 @@ export default async function RatesPage() {
                   {inUse.has(r.key) ? (
                     <span className="muted small">In use</span>
                   ) : (
-                    <form action={removeRate.bind(null, r.key)}>
+                    <ConfirmForm action={removeRate.bind(null, r.key)} message={`Remove the ${r.label} rate category?`}>
                       <button type="submit" className="btn btn-danger btn-sm">
                         Remove
                       </button>
-                    </form>
+                    </ConfirmForm>
                   )}
                 </li>
               ))}

@@ -47,7 +47,7 @@ export function ActivityChart({ days }: { days: Day[] }) {
   useEffect(() => {
     const el = box.current;
     if (!el) return;
-    const ro = new ResizeObserver(([e]) => setWidth(Math.max(280, Math.round(e.contentRect.width))));
+    const ro = new ResizeObserver(([e]) => setWidth(Math.max(200, Math.round(e.contentRect.width))));
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
@@ -80,9 +80,9 @@ export function ActivityChart({ days }: { days: Day[] }) {
             <CountUp value={total} kind="number" from={0} /> in total
           </p>
         </div>
-        <div className="seg" role="tablist" aria-label="Measure">
+        <div className="seg" role="group" aria-label="Measure">
           {Object.entries(METRICS).map(([k, label]) => (
-            <button key={k} type="button" role="tab" aria-selected={metric === k} className="seg-btn" onClick={() => setMetric(k as Metric)}>
+            <button key={k} type="button" aria-pressed={metric === k} className="seg-btn" onClick={() => setMetric(k as Metric)}>
               {label}
             </button>
           ))}
@@ -96,7 +96,9 @@ export function ActivityChart({ days }: { days: Day[] }) {
         role="img"
         aria-label={`${METRICS[metric]} per day for the last 14 days, ${total} in total. Use the arrow keys to read each day, or open the table.`}
         onPointerMove={(e) => pick(e.clientX)}
-        onPointerLeave={() => setActive(null)}
+        onPointerDown={(e) => pick(e.clientX)}
+        // A finger lifting fires pointerleave at once; on touch the reading stays until a tap elsewhere.
+        onPointerLeave={(e) => e.pointerType !== "touch" && setActive(null)}
         onKeyDown={(e) => {
           if (e.key === "ArrowRight") setActive((i) => Math.min(last, (i ?? -1) + 1));
           if (e.key === "ArrowLeft") setActive((i) => Math.max(0, (i ?? last + 1) - 1));
@@ -104,7 +106,8 @@ export function ActivityChart({ days }: { days: Day[] }) {
         }}
         onBlur={() => setActive(null)}
       >
-        <svg width={width} height={H} aria-hidden="true">
+        {/* viewBox: scales to fit before the first measurement, so phones never scroll sideways. */}
+        <svg width={width} height={H} viewBox={`0 0 ${width} ${H}`} aria-hidden="true">
           {[0, 0.5, 1].map((f) => (
             <g key={f}>
               <line x1={pad.l} x2={width - pad.r} y1={y(top * f)} y2={y(top * f)} className="chart-grid" />
@@ -134,7 +137,8 @@ export function ActivityChart({ days }: { days: Day[] }) {
           )}
         </svg>
         {at !== null && (
-          <div className="chart-tip" style={{ left: Math.min(Math.max(pts[at][0], 70), width - 70), top: Math.max(pts[at][1] - 12, 0) }}>
+          // Kept inside the card sideways, and flipped below the point near the top so it never covers the tabs.
+          <div className={`chart-tip${pts[at][1] < 70 ? " is-below" : ""}`} style={{ left: Math.min(Math.max(pts[at][0], 96), width - 96), top: pts[at][1] }}>
             <strong>{values[at].toLocaleString("en-IN")}</strong>
             <span>
               <i style={{ background: LINE }} /> {METRICS[metric]} · {shortDay(days[at].day)}
@@ -143,6 +147,9 @@ export function ActivityChart({ days }: { days: Day[] }) {
         )}
       </div>
 
+      <p className="sr-only" aria-live="polite">
+        {at !== null ? `${shortDay(days[at].day)}: ${values[at].toLocaleString("en-IN")} ${METRICS[metric].toLowerCase()}` : ""}
+      </p>
       <details className="chart-table">
         <summary>Show as table</summary>
         <div className="table-scroll">
@@ -206,7 +213,7 @@ export function StatTile({ label, values, i }: { label: string; values: number[]
         <p className={`delta delta-${dir}`}>
           <span aria-hidden="true">{dir === "up" ? "↑" : dir === "down" ? "↓" : "→"}</span>{" "}
           {dir === "flat" ? "No change" : pct !== null ? `${diff > 0 ? "+" : ""}${pct}%` : `+${diff}`}
-          <span className="delta-vs"> vs previous 7 days</span>
+          <span className="delta-vs"> in the last 7 full days, vs the 7 before</span>
         </p>
         <Sparkline values={values} />
       </div>

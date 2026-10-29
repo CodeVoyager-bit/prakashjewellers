@@ -8,6 +8,26 @@ const AVAIL = { all: "All pieces", in: "In stock", out: "Sold out" } as const;
 const SORT = { new: "Newest first", "price-asc": "Price: low to high", "price-desc": "Price: high to low", weight: "Weight: heaviest first" } as const;
 
 type Props = { c?: string; q?: string; avail: keyof typeof AVAIL; sort: keyof typeof SORT };
+type Select = { currentTarget: HTMLSelectElement };
+
+// A pick with the mouse or finger applies at once. From the keyboard, arrow keys only move the choice
+// (Windows browsers fire "change" on each one); Enter or leaving the field applies it.
+const apply = (e: Select) => e.currentTarget.form?.requestSubmit();
+const autoApply = {
+  onKeyDown: (e: Select & { key: string; preventDefault(): void }) => {
+    e.currentTarget.dataset.keyboard = "1";
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+    apply(e);
+  },
+  onChange: (e: Select) => {
+    if (e.currentTarget.dataset.keyboard) e.currentTarget.dataset.changed = "1";
+    else apply(e);
+  },
+  onBlur: (e: Select) => {
+    if (e.currentTarget.dataset.changed) apply(e);
+  },
+};
 
 // Availability and sort. Inline selects on desktop; a bottom sheet with large radio rows on phones.
 // Both are plain GET forms, so the URL always reflects the filters and can be shared.
@@ -26,7 +46,7 @@ export function Filters({ c, q, avail, sort }: Props) {
         {hidden}
         <label>
           <span className="sr-only">Availability</span>
-          <select name="avail" defaultValue={avail} onChange={(e) => e.currentTarget.form?.requestSubmit()}>
+          <select name="avail" defaultValue={avail} {...autoApply}>
             {Object.entries(AVAIL).map(([v, l]) => (
               <option key={v} value={v}>
                 {l}
@@ -36,7 +56,7 @@ export function Filters({ c, q, avail, sort }: Props) {
         </label>
         <label>
           <span className="sr-only">Sort</span>
-          <select name="sort" defaultValue={sort} onChange={(e) => e.currentTarget.form?.requestSubmit()}>
+          <select name="sort" defaultValue={sort} {...autoApply}>
             {Object.entries(SORT).map(([v, l]) => (
               <option key={v} value={v}>
                 {l}

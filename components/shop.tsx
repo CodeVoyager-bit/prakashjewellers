@@ -85,7 +85,7 @@ export function ItemCard({ item, s, preload }: { item: Item; s: Settings; preloa
         <p className="code">{[item.code, item.weight ? `${item.weight} g` : ""].filter(Boolean).join(" · ")}</p>
         <p className="card-price">
           {p ? rupees(p.total) : "Price on request"}
-          {p?.stale && <span className="stale-dot" title="Based on the last published rate" aria-label="Based on the last published rate" />}
+          {p?.stale && <span className="stale-dot" role="img" title="Based on the last published rate" aria-label="Based on the last published rate" />}
         </p>
       </div>
     </article>

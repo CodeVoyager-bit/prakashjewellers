@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Filters } from "@/components/filters";
 import { Empty, ItemGrid, SearchForm } from "@/components/shop";
+import { FocusSearch } from "@/components/ui";
 import { getCategories, getItems, getSettings, sortItems, type Avail, type Sort } from "@/lib/data";
 import { count } from "@/lib/price";
 
@@ -9,8 +10,13 @@ export const metadata = { title: "Collections" };
 const AVAILS: Avail[] = ["all", "in", "out"];
 const SORTS: Sort[] = ["new", "price-asc", "price-desc", "weight"];
 
-export default async function CollectionsPage({ searchParams }: { searchParams: Promise<{ c?: string; q?: string; avail?: string; sort?: string }> }) {
-  const p = await searchParams;
+type Params = Record<"c" | "q" | "avail" | "sort", string | string[] | undefined>;
+// "?q=a&q=b" arrives as an array; only the first value counts.
+const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
+
+export default async function CollectionsPage({ searchParams }: { searchParams: Promise<Partial<Params>> }) {
+  const raw = await searchParams;
+  const p = { c: first(raw.c), q: first(raw.q), avail: first(raw.avail), sort: first(raw.sort) };
   const avail = AVAILS.find((a) => a === p.avail) ?? "all";
   const sort = SORTS.find((x) => x === p.sort) ?? "new";
   const [s, found, categories] = await Promise.all([getSettings(), getItems({ category: p.c, q: p.q, avail }), getCategories()]);
@@ -33,6 +39,7 @@ export default async function CollectionsPage({ searchParams }: { searchParams: 
 
       <div className="wrap catalogue">
         <SearchForm q={p.q} />
+        <FocusSearch />
         {categories.length > 1 && (
           <nav className="chips" aria-label="Categories">
             <Link href={keep({ c: undefined })} className="chip" aria-current={p.c ? undefined : "page"} scroll={false}>

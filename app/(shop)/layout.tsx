@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { CartLink, CartToast, TabNav } from "@/components/cart";
-import { InstagramIcon, SearchIcon } from "@/components/icons";
+import { InstagramIcon } from "@/components/icons";
 import { Logo } from "@/components/logo";
 import { RateBar } from "@/components/shop";
-import { InstallLink, TrackVisit } from "@/components/ui";
+import { InstallLink, SearchLink, TrackVisit } from "@/components/ui";
 import { getSettings } from "@/lib/data";
 
 export default async function ShopLayout({ children }: { children: React.ReactNode }) {
@@ -22,9 +22,7 @@ export default async function ShopLayout({ children }: { children: React.ReactNo
             <Logo compact />
           </Link>
           <TabNav />
-          <Link href="/collections#q" className="icon-btn head-search" aria-label="Search by name or design code">
-            <SearchIcon size={20} />
-          </Link>
+          <SearchLink />
           <CartLink />
         </div>
       </header>

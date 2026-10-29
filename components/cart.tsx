@@ -22,13 +22,18 @@ const read = () => {
     return "[]";
   }
 };
-const lines = (): Line[] => {
+// Only well-formed lines survive: whatever ends up in storage must never break the page.
+const parse = (raw: string): Line[] => {
   try {
-    return JSON.parse(read());
+    const x: unknown = JSON.parse(raw);
+    return Array.isArray(x)
+      ? x.filter((l) => l && typeof l.id === "string").map((l) => ({ id: l.id, qty: Math.max(1, Math.floor(Number(l.qty)) || 1), seen: typeof l.seen === "number" ? l.seen : null }))
+      : [];
   } catch {
     return [];
   }
 };
+const lines = () => parse(read());
 const write = (next: Line[]) => {
   try {
     localStorage.setItem(KEY, JSON.stringify(next));
@@ -45,12 +50,7 @@ const subscribe = (cb: () => void) => {
 };
 
 export function useCart(): Line[] {
-  const raw = useSyncExternalStore(subscribe, read, () => "[]");
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return [];
-  }
+  return parse(useSyncExternalStore(subscribe, read, () => "[]"));
 }
 
 const addLine = (id: string, seen: number | null) => {
@@ -165,7 +165,7 @@ export function PieceActions({ id, available, seen, phone, name, photo }: { id: 
           <PhoneIcon size={20} />
         </a>
       )}
-      <Handoff open={handoff} onClose={() => setHandoff(false)} cart={[{ id, qty: 1 }]} />
+      <Handoff open={handoff} onClose={() => setHandoff(false)} cart={[{ id, qty: 1 }]} ask={available < 1} />
     </div>
   );
 }
@@ -174,20 +174,20 @@ type Prepared = Awaited<ReturnType<typeof prepareEnquiry>>;
 
 // WhatsApp handoff: rechecks prices and stock on the server, previews the exact message, then hands over.
 // The customer still reviews and sends it inside WhatsApp, so nothing here claims it was sent.
-export function Handoff({ open, onClose, cart }: { open: boolean; onClose: () => void; cart: { id: string; qty: number }[] }) {
+export function Handoff({ open, onClose, cart, ask }: { open: boolean; onClose: () => void; cart: { id: string; qty: number }[]; ask?: boolean }) {
   const [result, setResult] = useState<Prepared | null>(null);
   const key = JSON.stringify(cart);
   useEffect(() => {
     if (!open) return;
     let live = true;
-    prepareEnquiry(JSON.parse(key))
+    prepareEnquiry(JSON.parse(key), ask)
       .then((r) => live && setResult(r))
       .catch(() => live && setResult({ error: "Couldn’t reach the store’s server. Check your connection and try again." }));
     return () => {
       live = false;
       setResult(null);
     };
-  }, [open, key]);
+  }, [open, key, ask]);
 
   return (
     <Sheet open={open} onClose={onClose} title="Send Enquiry on WhatsApp">
@@ -223,16 +223,38 @@ export function CartView({ phone }: { phone: string }) {
   const cart = useCart();
   const key = JSON.stringify(cart.map(({ id, qty }) => ({ id, qty })));
   const [quote, setQuote] = useState<{ key: string; q: Quote } | null>(null);
+  const [failed, setFailed] = useState<string | null>(null); // the cart key whose quote couldn't load
+  const [attempt, setAttempt] = useState(0);
   const [handoff, setHandoff] = useState(false);
 
   useEffect(() => {
     let live = true;
-    getQuote(JSON.parse(key)).then((q) => live && setQuote({ key, q }));
+    const asked: { id: string; qty: number }[] = JSON.parse(key);
+    getQuote(asked)
+      .then((q) => {
+        if (!live) return;
+        setQuote({ key, q });
+        // Pieces the store has deleted come back missing: drop them so the badge and the page agree.
+        const gone = asked.filter((a) => !q.lines.some((l) => l.id === a.id)).map((a) => a.id);
+        if (gone.length) write(lines().filter((l) => !gone.includes(l.id)));
+      })
+      .catch(() => live && setFailed(key));
     return () => {
       live = false;
     };
-  }, [key]);
+  }, [key, attempt]);
+  const retry = () => (setFailed(null), setAttempt((n) => n + 1));
 
+  if (!quote && failed === key)
+    return (
+      <div className="empty" role="alert">
+        <h2>Couldn’t load today’s prices</h2>
+        <p className="muted">Check your connection and try again. Your selection is saved on this phone.</p>
+        <button type="button" className="btn btn-primary" onClick={retry}>
+          Try Again
+        </button>
+      </div>
+    );
   if (!quote)
     return (
       <div className="lines" aria-busy="true" aria-label="Loading your enquiry cart…">
@@ -263,7 +285,10 @@ export function CartView({ phone }: { phone: string }) {
     const seen = cart.find((c) => c.id === l.id)?.seen;
     return l.price && seen != null && seen !== l.price.total;
   });
-  const sendable = shown.filter((l) => l.qty > 0);
+  const sendable = shown.flatMap((l) => {
+    const qty = Math.min(cart.find((c) => c.id === l.id)!.qty, l.available);
+    return qty > 0 ? [{ id: l.id, qty }] : [];
+  });
 
   return (
     <>
@@ -278,12 +303,22 @@ export function CartView({ phone }: { phone: string }) {
           </button>
         </div>
       )}
+      {failed === key && (
+        <p className="notice notice-warn" role="alert">
+          Couldn’t update the prices for your latest change.{" "}
+          <button type="button" className="text-link" onClick={retry}>
+            Try again
+          </button>
+        </p>
+      )}
       {q.stale && <p className="notice notice-warn">Today’s rate hasn’t been published yet. These estimates use the last rate and may change.</p>}
 
       <ul className="lines">
         {shown.map((l) => {
           const unavailable = l.available < 1;
           const asked = cart.find((c) => c.id === l.id)!.qty;
+          // From the cart, not the last quote, so quick taps and Send never use an out-of-date number.
+          const qty = Math.min(asked, l.available);
           return (
             <li key={l.id} className={`line${unavailable ? " is-unavailable" : ""}`}>
               <Link href={`/item/${l.id}`} className="line-media" tabIndex={-1} aria-hidden="true">
@@ -298,14 +333,14 @@ export function CartView({ phone }: { phone: string }) {
                   <p className="status-out">No longer available. It won’t be included.</p>
                 ) : (
                   <>
-                    <p className="line-price">{l.price ? rupees(l.price.total * l.qty) : "Price on request"}</p>
+                    <p className="line-price">{l.price ? rupees(l.price.total * qty) : "Price on request"}</p>
                     {l.available > 1 ? (
                       <div className="stepper stepper-sm" role="group" aria-label={`Quantity of ${l.name}`}>
-                        <button type="button" aria-label="One fewer" disabled={l.qty <= 1} onClick={() => setQty(l.id, l.qty - 1)}>
+                        <button type="button" aria-label="One fewer" disabled={qty <= 1} onClick={() => setQty(l.id, qty - 1)}>
                           <MinusIcon size={16} />
                         </button>
-                        <output aria-live="polite">{l.qty}</output>
-                        <button type="button" aria-label="One more" disabled={l.qty >= l.available} onClick={() => setQty(l.id, l.qty + 1)}>
+                        <output aria-live="polite">{qty}</output>
+                        <button type="button" aria-label="One more" disabled={qty >= l.available} onClick={() => setQty(l.id, qty + 1)}>
                           <PlusIcon size={16} />
                         </button>
                         <span className="muted small">of {l.available}</span>
@@ -385,7 +420,7 @@ export function CartView({ phone }: { phone: string }) {
           )}
         </div>
       </div>
-      <Handoff open={handoff} onClose={() => setHandoff(false)} cart={sendable.map(({ id, qty }) => ({ id, qty }))} />
+      <Handoff open={handoff} onClose={() => setHandoff(false)} cart={sendable} />
     </>
   );
 }

@@ -41,7 +41,7 @@ export function Calculator({ rates, makingPct, taxPct }: { rates: Rate[]; making
         <p className="notice notice-warn">Today’s {rate.label} rate isn’t published yet; this uses the {formatDay(rate.updatedAt)} rate.</p>
       )}
 
-      <dl className="breakdown calc-out" aria-live="polite">
+      <dl className="breakdown calc-out">
         <div>
           <dt>Rate (set by the store)</dt>
           <dd>{rate ? `${rupees(rate.perGram)}/g` : "–"}</dd>
@@ -63,6 +63,10 @@ export function Calculator({ rates, makingPct, taxPct }: { rates: Rate[]; making
           <dd>{p ? <CountUp value={p.total} /> : "Enter a weight"}</dd>
         </div>
       </dl>
+      {/* The figures above count up frame by frame; screen readers hear only the settled total. */}
+      <p className="sr-only" aria-live="polite">
+        {p ? `Estimated total ${rupees(p.total)}` : ""}
+      </p>
       <p className="fine">Some pieces have their own making charge or stone charges, shown on their page. Final price and availability will be confirmed by the store.</p>
     </div>
   );

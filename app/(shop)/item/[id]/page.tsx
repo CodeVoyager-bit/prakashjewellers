@@ -8,13 +8,13 @@ import { PriceBreakdown, StaleNotice } from "@/components/shop";
 import { Gallery, ShareButton, TrackView } from "@/components/ui";
 import { auth } from "@/lib/auth";
 import cloudinaryLoader from "@/lib/cloudinary-loader";
-import { DETAILS, getItem, getSettings, priceFor, STATUSES } from "@/lib/data";
+import { DETAILS, getSettings, getShopItem, priceFor, STATUSES } from "@/lib/data";
 import { formatTime, isToday, rupees } from "@/lib/price";
 
 type Props = { params: Promise<{ id: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const item = await getItem((await params).id);
+  const item = await getShopItem((await params).id);
   // A missing piece shows the 404 page; give it that title (the client otherwise falls back to the site default).
   const missing = !item || (item.status !== "live" && !(await auth.api.getSession({ headers: await headers() })));
   if (missing) return { title: "Page Not Found" };
@@ -28,7 +28,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function ItemPage({ params }: Props) {
   const { id } = await params;
-  const [item, s] = await Promise.all([getItem(id), getSettings()]);
+  const [item, s] = await Promise.all([getShopItem(id), getSettings()]);
   // Drafts and archived pieces are only shown to signed-in staff, as a preview.
   const preview = item && item.status !== "live";
   if (!item || (preview && !(await auth.api.getSession({ headers: await headers() })))) notFound();

@@ -8,7 +8,7 @@ import { collections, getItems, getSettings } from "@/lib/data";
 export default async function Home() {
   const [s, items] = await Promise.all([getSettings(), getItems()]);
   // The hero crossfades the store's newest cover photos, so it changes as pieces are added.
-  const covers = items.flatMap((i) => i.photos.slice(0, 1)).slice(0, 3);
+  const covers = [...new Set(items.flatMap((i) => i.photos.slice(0, 1)))].slice(0, 3); // pieces of one design share photos
   const featured = items.filter((i) => i.featured).slice(0, 4);
   const latest = items.filter((i) => !i.featured).slice(0, 8);
   // A photo the hero isn't already showing, so the band doesn't repeat it.

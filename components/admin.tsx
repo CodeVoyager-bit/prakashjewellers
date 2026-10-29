@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, useTransition, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition, type FormEvent } from "react";
 import { addStaff, duplicateItem, markSold, removeStaff, resetStaffPassword, saveItem, saveRates, setEnquiryStatus, setQty, setStatus, uploadSignature } from "@/app/admin/actions";
 import { authClient } from "@/lib/auth-client";
 import type { Item } from "@/lib/data";
@@ -12,6 +12,7 @@ import { staffEmail } from "@/lib/staff-email.mjs";
 import { videoPoster, videoUrl } from "@/lib/cloudinary-loader";
 import { BackIcon, CloseIcon, CopyIcon, EyeIcon, EyeOffIcon, MinusIcon, PlayIcon, PlusIcon, SearchIcon } from "./icons";
 import { Photo } from "./photo";
+import { Submit } from "./ui";
 
 // Keeps only the 10-digit mobile: letters never appear, and "+91 98765 43210" or "098765…" paste cleanly.
 // No maxLength on these fields: the browser would cut a pasted "+91 …" short before this could clean it.
@@ -184,7 +185,7 @@ export function AddStaffForm() {
   }
 
   return (
-    <form onSubmit={submit} className="form-grid">
+    <form onSubmit={submit} onInput={() => note?.ok && setNote(null)} className="form-grid">
       <div className="form-grid two">
         <div className="field">
           <label htmlFor="staff-name">Name</label>
@@ -232,6 +233,7 @@ export function StaffActions({ id, name, me }: { id: string; name: string; me: b
   const [password, setPassword] = useState("");
   const [note, setNote] = useState<Note>(null);
   const [busy, start] = useTransition();
+  const toggle = useRef<HTMLButtonElement>(null);
 
   function reset(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -241,6 +243,7 @@ export function StaffActions({ id, name, me }: { id: string; name: string; me: b
       setNote({ ok: true, text: `New password for ${name}: ${password}.${me ? "" : " They’ve been signed out and must sign in with it."}` });
       setOpen(false);
       setPassword("");
+      toggle.current?.focus(); // the form closes; keep keyboard and screen-reader users in place
     });
   }
   function remove() {
@@ -254,7 +257,7 @@ export function StaffActions({ id, name, me }: { id: string; name: string; me: b
   return (
     <div className="staff-actions">
       <div className="row-actions">
-        <button type="button" className="btn btn-quiet btn-sm" aria-expanded={open} onClick={() => (setOpen(!open), setNote(null))}>
+        <button type="button" ref={toggle} className="btn btn-quiet btn-sm" aria-expanded={open} onClick={() => (setOpen(!open), setNote(null))}>
           Reset Password
         </button>
         {!me && (
@@ -279,7 +282,11 @@ export function StaffActions({ id, name, me }: { id: string; name: string; me: b
   );
 }
 
-const n = (v: FormDataEntryValue | null) => (String(v ?? "").trim() === "" ? null : Number(String(v).replace(/,/g, "")));
+// Same reading as the server: "1,250", "₹5000", "10%" and "12.4 g" are all numbers.
+const n = (v: FormDataEntryValue | null) => {
+  const s = String(v ?? "").replace(/[,₹%\s]/g, "").replace(/(gms?|grams?|g)$/i, "");
+  return s === "" ? null : Number(s);
+};
 
 // Daily rates. Staff type only what changed; the preview shows the per-gram figure and a sample price before saving.
 export function RatesForm({ rates, makingPct, taxPct }: { rates: Rate[]; makingPct: number; taxPct: number }) {
@@ -345,7 +352,7 @@ export function RatesForm({ rates, makingPct, taxPct }: { rates: Rate[]; makingP
                 inputMode="decimal"
                 className="rate-input"
                 autoComplete="off"
-                placeholder={r.perGram ? String(unit === "g" ? r.perGram : r.perGram * 10) : ""}
+                placeholder={r.perGram ? String(unit === "g" ? r.perGram : Math.round(r.perGram * 1000) / 100) : ""}
                 value={values[r.key] ?? ""}
                 onChange={(e) => setValues({ ...values, [r.key]: e.target.value })}
               />
@@ -403,6 +410,29 @@ export function ItemForm({ item, categories, rates, makingPct, taxPct, copied }:
   const [category, setCategory] = useState(item?.category ?? "");
   const [newCategory, setNewCategory] = useState(false);
   const categoryOptions = [...new Set([...CATEGORIES, ...categories])].sort();
+  // Unsaved edits: leaving by a link, another form (New Piece, Archive, Sign Out) or a reload asks first.
+  const form = useRef<HTMLFormElement>(null);
+  const [typed, setTyped] = useState(false);
+  const dirty = typed || video !== (item?.video ?? null) || photos.join() !== (item?.photos ?? []).join();
+  useEffect(() => {
+    if (!dirty) return;
+    const ask = (e: Event) => {
+      const t = e.target as Element;
+      if (e.type === "click" ? !t.closest?.("a[href]:not([target=_blank])") : t === form.current) return;
+      if (confirm("Leave without saving your changes?")) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+    };
+    const unload = (e: BeforeUnloadEvent) => e.preventDefault();
+    document.addEventListener("click", ask, true);
+    document.addEventListener("submit", ask, true);
+    addEventListener("beforeunload", unload);
+    return () => {
+      document.removeEventListener("click", ask, true);
+      document.removeEventListener("submit", ask, true);
+      removeEventListener("beforeunload", unload);
+    };
+  }, [dirty]);
   // Live inputs for the price preview.
   const [f, setF] = useState({
     rateKey: item?.rateKey ?? rates[0]?.key ?? "",
@@ -411,6 +441,7 @@ export function ItemForm({ item, categories, rates, makingPct, taxPct, copied }:
     making: String(item?.making ?? ""),
     extraCharge: String(item?.extraCharge ?? ""),
     fixedPrice: String(item?.fixedPrice ?? ""),
+    extraLabel: item?.extraLabel ?? "",
   });
   const bind = (k: keyof typeof f) => ({ name: k, value: f[k], onChange: (e: { target: { value: string } }) => setF({ ...f, [k]: e.target.value }) });
   const preview = useMemo(
@@ -463,7 +494,7 @@ export function ItemForm({ item, categories, rates, makingPct, taxPct, copied }:
   const rate = rates.find((r) => r.key === f.rateKey);
 
   return (
-    <form onSubmit={submit} className="editor">
+    <form ref={form} onSubmit={submit} onInput={() => setTyped(true)} className="editor">
       <div className="form-grid panel">
         {copied && (
           <p className="notice notice-info" role="status">
@@ -551,7 +582,7 @@ export function ItemForm({ item, categories, rates, makingPct, taxPct, copied }:
               </div>
               <div className="field">
                 <label htmlFor="extraLabel">What the additional charge is for</label>
-                <input id="extraLabel" name="extraLabel" defaultValue={item?.extraLabel} autoComplete="off" placeholder="Stone setting…" />
+                <input id="extraLabel" autoComplete="off" placeholder="Stone setting…" {...bind("extraLabel")} />
               </div>
             </div>
           ) : (
@@ -567,6 +598,7 @@ export function ItemForm({ item, categories, rates, makingPct, taxPct, copied }:
               <input type="hidden" name="netWeight" value={f.netWeight} />
               <input type="hidden" name="making" value={f.making} />
               <input type="hidden" name="extraCharge" value={f.extraCharge} />
+              <input type="hidden" name="extraLabel" value={f.extraLabel} />
             </>
           )}
           {pricing === "weight" && <input type="hidden" name="fixedPrice" value={f.fixedPrice} />}
@@ -578,11 +610,12 @@ export function ItemForm({ item, categories, rates, makingPct, taxPct, copied }:
             <div className="field">
               <label htmlFor="qty">Quantity in stock *</label>
               <input id="qty" name="qty" type="number" inputMode="numeric" min="0" step="1" required defaultValue={v(item?.qty ?? 1)} />
+              <input type="hidden" name="qtyWas" value={v(item?.qty)} />
               <p className="help">Usually 1: each piece has its own weight. 0 shows as sold out.</p>
             </div>
             <div className="field">
               <label htmlFor="status">Visibility</label>
-              <select id="status" name="status" defaultValue={item?.status ?? "live"}>
+              <select id="status" name="status" defaultValue={item?.status ?? "live"} key={item?.status}>
                 {Object.entries(STATUSES).map(([k, label]) => (
                   <option key={k} value={k}>
                     {label}
@@ -635,10 +668,10 @@ export function ItemForm({ item, categories, rates, makingPct, taxPct, copied }:
               </li>
             ))}
             <li>
-              <label className="upload" aria-busy={uploading > 0}>
-                <input type="file" accept="image/*" multiple className="sr-only" disabled={uploading > 0} onChange={(e) => (upload(Array.from(e.target.files ?? [])), (e.target.value = ""))} />
+              <label className="upload" aria-busy={uploading > 0} aria-disabled={photos.length >= 12}>
+                <input type="file" accept="image/*" multiple className="sr-only" disabled={uploading > 0 || photos.length >= 12} onChange={(e) => (upload(Array.from(e.target.files ?? []).slice(0, 12 - photos.length)), (e.target.value = ""))} />
                 <PlusIcon size={22} />
-                <span>{uploading ? `Uploading ${uploading}…` : "Add Photos"}</span>
+                <span>{uploading ? `Uploading ${uploading}…` : photos.length >= 12 ? "12 photos is the most" : "Add Photos"}</span>
               </label>
             </li>
           </ul>
@@ -785,13 +818,13 @@ export function StockList({ items, prices }: { items: Item[]; prices: Record<str
               </div>
               <div className="admin-item-actions">
                 <div className="stepper" role="group" aria-label={`Stock for ${it.name}`}>
-                  <form action={setQty.bind(null, it.id, it.qty - 1)}>
+                  <form action={setQty.bind(null, it.id, -1)}>
                     <button type="submit" aria-label="One less in stock" disabled={it.qty <= 0}>
                       <MinusIcon size={18} />
                     </button>
                   </form>
                   <output aria-label="In stock">{it.qty}</output>
-                  <form action={setQty.bind(null, it.id, it.qty + 1)}>
+                  <form action={setQty.bind(null, it.id, 1)}>
                     <button type="submit" aria-label="One more in stock">
                       <PlusIcon size={18} />
                     </button>
@@ -805,10 +838,10 @@ export function StockList({ items, prices }: { items: Item[]; prices: Record<str
                       </button>
                     </form>
                   )}
-                  <form action={duplicateItem.bind(null, it.id)}>
-                    <button type="submit" className="btn btn-quiet btn-sm" title="New piece of this design, with its own weight">
+                  <form action={duplicateItem.bind(null, it.id)} title="New piece of this design, with its own weight">
+                    <Submit className="btn btn-quiet btn-sm" pending="Copying…">
                       <CopyIcon size={16} /> New Piece
-                    </button>
+                    </Submit>
                   </form>
                   <form action={setStatus.bind(null, it.id, it.status === "archived" ? "draft" : "archived")}>
                     <button type="submit" className="btn btn-quiet btn-sm">
@@ -839,7 +872,7 @@ export function EnquiryStatusSelect({ id, status }: { id: string; status: Enquir
       <label className="sr-only" htmlFor={`st-${id}`}>
         Follow-up status
       </label>
-      <select id={`st-${id}`} name="status" defaultValue={status} onChange={(e) => e.currentTarget.form?.requestSubmit()}>
+      <select id={`st-${id}`} name="status" defaultValue={status} key={status} onChange={(e) => e.currentTarget.form?.requestSubmit()}>
         {Object.entries(ENQUIRY_STATUSES).map(([k, label]) => (
           <option key={k} value={k}>
             {label}

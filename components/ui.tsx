@@ -1,10 +1,12 @@
 "use client";
 
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useId, useRef, useState, useSyncExternalStore, ViewTransition, type ReactNode } from "react";
 import { useFormStatus } from "react-dom";
 import { videoPoster, videoUrl } from "@/lib/cloudinary-loader";
 import { rupees } from "@/lib/price";
-import { AppIcon, CheckIcon, CloseIcon, PlayIcon, ShareIcon } from "./icons";
+import { AppIcon, CheckIcon, CloseIcon, PlayIcon, SearchIcon, ShareIcon } from "./icons";
 import { Photo } from "./photo";
 
 // Pilot analytics beacon; never delays the page. See app/api/track/route.ts.
@@ -20,6 +22,33 @@ export function TrackView({ id }: { id: string }) {
 }
 
 // One "visit" per browsing session.
+// Header search: opens the collections page at its search box, or on that page puts the cursor straight in it.
+export function SearchLink() {
+  const path = usePathname();
+  return (
+    <Link
+      href="/collections#q"
+      className="icon-btn head-search"
+      aria-label="Search by name or design code"
+      onClick={(e) => {
+        const box = document.getElementById("q");
+        if (path !== "/collections" || !box) return;
+        e.preventDefault();
+        box.focus();
+      }}
+    >
+      <SearchIcon size={20} />
+    </Link>
+  );
+}
+// Arriving from the header's search icon (/collections#q): put the cursor in the box.
+export function FocusSearch() {
+  useEffect(() => {
+    if (location.hash === "#q") document.getElementById("q")?.focus();
+  }, []);
+  return null;
+}
+
 export function TrackVisit() {
   useEffect(() => {
     try {
@@ -111,7 +140,11 @@ export function ShareButton({ title, text }: { title: string; text: string }) {
         if ((e as Error).name === "AbortError") return; // closed the sheet
       }
     }
-    await navigator.clipboard.writeText(url);
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      return prompt("Copy this link:", url); // no clipboard access: show the link to copy by hand
+    }
     setCopied(true);
     setTimeout(() => setCopied(false), 2500);
   }
