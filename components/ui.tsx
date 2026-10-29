@@ -16,13 +16,13 @@ export function track(e: "visit" | "view" | "cart" | "whatsapp", id?: string) {
   } catch {}
 }
 
-// Once per piece per browsing session: refreshing the page (or React running the effect twice in development)
-// doesn't count again.
+// Once per piece per browser: refreshing, coming back later or opening it in a new tab doesn't count again.
+// A private window or cleared browser data is a new browser, so it counts once more.
 export function TrackView({ id }: { id: string }) {
   useEffect(() => {
     try {
-      if (sessionStorage.getItem(`pj-viewed-${id}`)) return;
-      sessionStorage.setItem(`pj-viewed-${id}`, "1");
+      if (localStorage.getItem(`pj-viewed-${id}`)) return;
+      localStorage.setItem(`pj-viewed-${id}`, "1");
     } catch {}
     track("view", id);
   }, [id]);

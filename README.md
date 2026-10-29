@@ -78,7 +78,7 @@ The favicon, home-screen icons and the card shown when a link is shared on Whats
 
 ## Visitor figures
 
-The dashboard's visits, views, cart adds and WhatsApp opens are recorded only by the live Vercel site; local and preview servers don't count, even though they use the same database. Each piece's view counts once per browsing session. Before launch, clear the test traffic with `npm run stats:reset -- --yes` (enquiries and the sales log are kept).
+The dashboard's visits, views, cart adds and WhatsApp opens are recorded only by the live Vercel site; local and preview servers don't count, even though they use the same database. Each piece's view counts once per browser: refreshing or coming back to it later doesn't add another. Before launch, clear the test traffic with `npm run stats:reset -- --yes` (enquiries and the sales log are kept).
 
 ## Demo data
 
