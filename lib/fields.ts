@@ -32,13 +32,18 @@ export const STATUSES = {
 export type Status = keyof typeof STATUSES;
 export const isStatus = (s: unknown): s is Status => own(STATUSES, s);
 
+// The follow-up pipeline, in order. "opened" is what the site sets when a customer reaches WhatsApp.
 export const ENQUIRY_STATUSES = {
-  opened: "Opened WhatsApp",
-  confirmed: "Confirmed with customer",
+  opened: "New",
+  replied: "Replied",
+  confirmed: "Confirmed",
+  sold: "Sold",
   closed: "Not proceeding",
 } as const;
 export type EnquiryStatus = keyof typeof ENQUIRY_STATUSES;
 export const isEnquiryStatus = (s: unknown): s is EnquiryStatus => own(ENQUIRY_STATUSES, s);
+// Still being worked on: shown as "open" and counted in the open value.
+export const OPEN_ENQUIRY: EnquiryStatus[] = ["opened", "replied", "confirmed"];
 
 // Browser chrome (header surface) and page background per theme; also the installed app's splash colours.
 export const THEME_COLORS: Record<Theme, { head: string; bg: string }> = {

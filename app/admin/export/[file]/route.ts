@@ -2,7 +2,7 @@ import { BSON } from "mongodb";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { getAllItems, getSettings, priceFor } from "@/lib/data";
+import { ENQUIRY_STATUSES, enquiryRef, getAllItems, getSettings, isEnquiryStatus, priceFor } from "@/lib/data";
 
 const csv = (rows: (string | number | boolean | null | undefined)[][]) =>
   rows.map((r) => r.map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`).join(",")).join("\r\n");
@@ -29,7 +29,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ file: stri
   if (file === "enquiries.csv") {
     const rows = await db.collection("enquiries").find({ opened: true }).sort({ createdAt: -1 }).toArray();
     return send(
-      csv([["Date", "Ref", "Status", "Pieces", "Estimate ₹", "Rates"], ...rows.map((e) => [e.createdAt.toISOString(), `PJ-${e._id.toHexString().slice(-6).toUpperCase()}`, e.status, e.items.map((i: { name: string; code: string; qty: number }) => `${i.name} ${i.code} x${i.qty}`).join("; "), e.total, e.rates])]),
+      csv([["Date", "Ref", "Status", "Pieces", "Estimate ₹", "Rates", "Note"], ...rows.map((e) => [e.createdAt.toISOString(), enquiryRef(e._id), isEnquiryStatus(e.status) ? ENQUIRY_STATUSES[e.status] : e.status, e.items.map((i: { name: string; code: string; qty: number }) => `${i.name} ${i.code} x${i.qty}`).join("; "), e.total, e.rates, e.note])]),
       "text/csv; charset=utf-8",
       "enquiries",
     );

@@ -56,9 +56,10 @@ type EnquiryDoc = {
   rates: string;
   opened: boolean; // the customer tapped "Continue to WhatsApp"; we can't know if they sent it
   status: EnquiryStatus;
+  note?: string; // staff's follow-up note
   createdAt: Date;
 };
-type SaleDoc = { itemId: string; code: string; piece: number; name: string; estimate: number | null; by: string; at: Date };
+type SaleDoc = { itemId: string; code: string; piece: number; name: string; estimate: number | null; by: string; at: Date; ref?: string }; // ref: the enquiry it came from
 type StatDoc = { _id: string; visits?: number; views?: number; cartAdds?: number; whatsapp?: number };
 
 export const settingsDb = db.collection<Partial<Settings> & { _id: string; rate?: number; rateAt?: Date }>("settings");
@@ -260,7 +261,7 @@ export async function getStats(days: number) {
   const from = new Date(Date.now() - (days - 1) * 864e5);
   const [daily, confirmed, sales] = await Promise.all([
     statsDb.find({ _id: { $gte: ymd(from) } }).sort({ _id: 1 }).toArray(),
-    enquiriesDb.countDocuments({ status: "confirmed", createdAt: { $gte: from } }),
+    enquiriesDb.countDocuments({ status: { $in: ["confirmed", "sold"] }, createdAt: { $gte: from } }),
     salesDb.find({ at: { $gte: from } }).toArray(),
   ]);
   const total = (k: keyof Omit<StatDoc, "_id">) => daily.reduce((n, d) => n + (d[k] ?? 0), 0);
@@ -279,6 +280,15 @@ export async function getStats(days: number) {
   };
 }
 
-export async function getEnquiries(limit = 50) {
-  return enquiriesDb.find({ opened: true }).sort({ createdAt: -1 }).limit(limit).toArray();
+export async function getEnquiries(limit = 50, status?: EnquiryStatus) {
+  return enquiriesDb.find({ opened: true, ...(status && { status }) }).sort({ createdAt: -1 }).limit(limit).toArray();
+}
+
+// "PJ-59D667": the reference printed in the customer's WhatsApp message.
+export const enquiryRef = (id: ObjectId | string) => `PJ-${String(id).slice(-6).toUpperCase()}`;
+
+// How many enquiries sit in each status, and the estimate value of each group.
+export async function enquiryCounts() {
+  const rows = await enquiriesDb.aggregate<{ _id: EnquiryStatus; n: number; value: number }>([{ $match: { opened: true } }, { $group: { _id: "$status", n: { $sum: 1 }, value: { $sum: "$total" } } }]).toArray();
+  return Object.fromEntries(rows.map((r) => [r._id, { n: r.n, value: r.value }])) as Partial<Record<EnquiryStatus, { n: number; value: number }>>;
 }

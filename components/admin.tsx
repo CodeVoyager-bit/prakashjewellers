@@ -3,14 +3,14 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition, type FormEvent } from "react";
-import { addStaff, duplicateItem, markSold, removeStaff, resetStaffPassword, saveItem, saveRates, setEnquiryStatus, setQty, setStatus, uploadSignature } from "@/app/admin/actions";
+import { addStaff, duplicateItem, markSold, removeStaff, resetStaffPassword, saveItem, saveRates, setEnquiryNote, setEnquiryStatus, setQty, setStatus, uploadSignature } from "@/app/admin/actions";
 import { authClient } from "@/lib/auth-client";
 import type { Item } from "@/lib/data";
 import { CATEGORIES, DETAILS, ENQUIRY_STATUSES, STATUSES, type EnquiryStatus, type Status } from "@/lib/fields";
 import { formatDayTime, isToday, perGram, priceOf, rupees, type Rate } from "@/lib/price";
 import { staffEmail } from "@/lib/staff-email.mjs";
 import { videoPoster, videoUrl } from "@/lib/cloudinary-loader";
-import { BackIcon, CloseIcon, CopyIcon, EyeIcon, EyeOffIcon, MinusIcon, PlayIcon, PlusIcon, SearchIcon } from "./icons";
+import { BackIcon, CheckIcon, CloseIcon, CopyIcon, EyeIcon, EyeOffIcon, MinusIcon, PlayIcon, PlusIcon, SearchIcon } from "./icons";
 import { Photo } from "./photo";
 import { Submit } from "./ui";
 
@@ -832,7 +832,7 @@ export function StockList({ items, prices }: { items: Item[]; prices: Record<str
                 </div>
                 <div className="row-actions">
                   {it.qty > 0 && it.status === "live" && (
-                    <form action={markSold.bind(null, it.id)} onSubmit={(e) => confirm(`Mark one “${it.name}” as sold? Stock goes down by 1 and the sale is logged.`) || e.preventDefault()}>
+                    <form action={markSold.bind(null, it.id, "")} onSubmit={(e) => confirm(`Mark one “${it.name}” as sold? Stock goes down by 1 and the sale is logged.`) || e.preventDefault()}>
                       <button type="submit" className="btn btn-quiet btn-sm">
                         Mark Sold
                       </button>
@@ -868,10 +868,8 @@ export function StockList({ items, prices }: { items: Item[]; prices: Record<str
 
 export function EnquiryStatusSelect({ id, status }: { id: string; status: EnquiryStatus }) {
   return (
-    <form action={(fd) => setEnquiryStatus(id, String(fd.get("status")) as EnquiryStatus)}>
-      <label className="sr-only" htmlFor={`st-${id}`}>
-        Follow-up status
-      </label>
+    <form action={(fd) => setEnquiryStatus(id, String(fd.get("status")) as EnquiryStatus)} className="field">
+      <label htmlFor={`st-${id}`}>Status</label>
       <select id={`st-${id}`} name="status" defaultValue={status} key={status} onChange={(e) => e.currentTarget.form?.requestSubmit()}>
         {Object.entries(ENQUIRY_STATUSES).map(([k, label]) => (
           <option key={k} value={k}>
@@ -880,5 +878,55 @@ export function EnquiryStatusSelect({ id, status }: { id: string; status: Enquir
         ))}
       </select>
     </form>
+  );
+}
+
+// The enquiry's reference, copied to search for the customer's chat in WhatsApp.
+export function CopyRef({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      type="button"
+      className="copy-ref"
+      aria-label={copied ? `Copied ${text}` : `Copy reference ${text}`}
+      onClick={async () => {
+        try {
+          await navigator.clipboard.writeText(text);
+          setCopied(true);
+          setTimeout(() => setCopied(false), 1500);
+        } catch {}
+      }}
+    >
+      {copied ? <CheckIcon size={14} /> : <CopyIcon size={14} />} {copied ? "Copied" : "Copy"}
+    </button>
+  );
+}
+
+// Staff's note on an enquiry: saved a moment after typing stops, or straight away on leaving the box.
+export function EnquiryNote({ id, note }: { id: string; note: string }) {
+  const [value, setValue] = useState(note);
+  const [saved, setSaved] = useState(note);
+  const [saving, start] = useTransition();
+  const changed = value.trim() !== saved.trim();
+  const save = () => {
+    if (!changed) return;
+    start(async () => {
+      await setEnquiryNote(id, value);
+      setSaved(value);
+    });
+  };
+  useEffect(() => {
+    if (!changed || saving) return;
+    const t = setTimeout(save, 1200);
+    return () => clearTimeout(t);
+  });
+  return (
+    <div className="field enq-note">
+      <label htmlFor={`note-${id}`}>Note</label>
+      <textarea id={`note-${id}`} rows={2} maxLength={500} value={value} onChange={(e) => setValue(e.target.value)} onBlur={save} placeholder="Customer’s name, when they’re visiting, what they asked…" />
+      <p className="help" aria-live="polite">
+        {saving ? "Saving…" : changed ? "Typing…" : saved ? "Saved" : "Saves automatically"}
+      </p>
+    </div>
   );
 }

@@ -12,6 +12,7 @@ import {
   DEFAULT_RATE_KEY,
   DETAILS,
   enquiriesDb,
+  enquiryRef,
   getItem,
   getSettings,
   isEnquiryStatus,
@@ -216,13 +217,18 @@ export async function setQty(id: string, delta: number) {
 }
 
 // One piece sold in the shop: stock goes down and the sale is logged for the pilot report.
-export async function markSold(id: string) {
+// From the Enquiries page, `enquiryId` links the sale to that enquiry and moves the enquiry to Sold.
+export async function markSold(id: string, enquiryId?: string) {
   const by = await staffName();
   const [item, s] = await Promise.all([getItem(id), getSettings()]);
   if (!item || item.qty < 1) return;
+  const enquiry = typeof enquiryId === "string" && enquiryId ? oid(enquiryId) : null;
   // The sale is logged only if this tap actually took one off, so a double tap can't log two.
   const { modifiedCount } = await itemsDb.updateOne({ _id: oid(id)!, qty: { $gt: 0 } }, { $inc: { qty: -1 } });
-  if (modifiedCount) await salesDb.insertOne({ itemId: id, code: item.code, piece: item.piece, name: item.name, estimate: priceFor(item, s)?.total ?? null, by, at: new Date() });
+  if (modifiedCount) {
+    await salesDb.insertOne({ itemId: id, code: item.code, piece: item.piece, name: item.name, estimate: priceFor(item, s)?.total ?? null, by, at: new Date(), ...(enquiry && { ref: enquiryRef(enquiry) }) });
+    if (enquiry) await enquiriesDb.updateOne({ _id: enquiry }, { $set: { status: "sold" } });
+  }
   done();
 }
 
@@ -239,6 +245,14 @@ export async function setEnquiryStatus(id: string, status: EnquiryStatus) {
   const _id = oid(id);
   if (_id && isEnquiryStatus(status)) await enquiriesDb.updateOne({ _id }, { $set: { status } });
   revalidatePath("/admin", "layout");
+}
+
+// A short follow-up note on an enquiry, such as "visiting Sunday" or the customer's name.
+export async function setEnquiryNote(id: string, note: string) {
+  await requireStaff();
+  const _id = oid(id);
+  if (_id && typeof note === "string") await enquiriesDb.updateOne({ _id }, { $set: { note: note.trim().slice(0, 500) } });
+  revalidatePath("/admin/enquiries");
 }
 
 // Lets the browser upload straight to Cloudinary, so photos and videos never pass through Vercel's size limit.

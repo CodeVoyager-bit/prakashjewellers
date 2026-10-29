@@ -5,7 +5,7 @@ import { AlertIcon, CheckIcon, DownloadIcon, PlusIcon } from "@/components/icons
 import { Photo } from "@/components/photo";
 import { CountUp } from "@/components/ui";
 import { requireStaff } from "@/lib/auth";
-import { ENQUIRY_STATUSES, getAllItems, getEnquiries, getSettings, getStats } from "@/lib/data";
+import { ENQUIRY_STATUSES, enquiryRef, getAllItems, getEnquiries, getSettings, getStats } from "@/lib/data";
 import { formatDay, formatDayTime, formatTime, isToday, rupees } from "@/lib/price";
 
 export const metadata = { title: "Staff Dashboard", robots: { index: false } };
@@ -159,7 +159,7 @@ export default async function Dashboard() {
                 {enquiries.map((e) => (
                   <li key={e._id.toHexString()}>
                     <p className="help">
-                      {formatDayTime(e.createdAt)} · Ref PJ-{e._id.toHexString().slice(-6).toUpperCase()} · {ENQUIRY_STATUSES[e.status]}
+                      {formatDayTime(e.createdAt)} · Ref {enquiryRef(e._id)} · {ENQUIRY_STATUSES[e.status]}
                     </p>
                     <p>{e.items.map((i) => `${i.name}${i.qty > 1 ? ` ×${i.qty}` : ""}`).join(", ")}</p>
                     <p className="line-price">{rupees(e.total)}</p>
@@ -176,7 +176,7 @@ export default async function Dashboard() {
             </div>
             <dl className="kv">
               <div>
-                <dt>Enquiries confirmed by staff</dt>
+                <dt>Enquiries confirmed or sold</dt>
                 <dd>{month.confirmed}</dd>
               </div>
               <div>
