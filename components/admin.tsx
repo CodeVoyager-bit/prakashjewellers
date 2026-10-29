@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition, type FormEvent } from "react";
+import { useEffect, useMemo, useState, useTransition, type FormEvent } from "react";
 import { addStaff, duplicateItem, markSold, removeStaff, resetStaffPassword, saveItem, saveRates, setEnquiryStatus, setQty, setStatus, uploadSignature } from "@/app/admin/actions";
 import { authClient } from "@/lib/auth-client";
 import type { Item } from "@/lib/data";
@@ -374,6 +374,10 @@ const PLACEHOLDERS: Record<keyof typeof DETAILS, string> = { stones: "Kundan, pe
 
 export function ItemForm({ item, categories, rates, makingPct, taxPct, copied }: { item: Item | null; categories: string[]; rates: Rate[]; makingPct: number; taxPct: number; copied?: boolean }) {
   const [error, setError] = useState("");
+  // On phones the message sits below the long form, so bring it into view.
+  useEffect(() => {
+    if (error) document.getElementById("item-error")?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }, [error]);
   const [saving, startSaving] = useTransition();
   const [photos, setPhotos] = useState(item?.photos ?? []);
   const [uploading, setUploading] = useState(0);
@@ -658,7 +662,7 @@ export function ItemForm({ item, categories, rates, makingPct, taxPct, copied }:
           <p className="muted">{pricing === "weight" ? (rate?.perGram ? "Enter the weight to see the price." : `Set the ${rate?.label ?? ""} rate first, on the Rates page.`) : "Enter the fixed price."}</p>
         )}
         {error && (
-          <p className="error" role="alert">
+          <p id="item-error" className="error" role="alert">
             {error}
           </p>
         )}
@@ -671,6 +675,12 @@ export function ItemForm({ item, categories, rates, makingPct, taxPct, copied }:
           </Link>
         )}
       </aside>
+      <div className="save-bar">
+        <span className="save-bar-total">{preview ? rupees(preview.total) : ""}</span>
+        <button type="submit" className="btn btn-primary" disabled={saving || uploading > 0}>
+          {saving ? "Saving…" : item ? "Save Changes" : "Add Product"}
+        </button>
+      </div>
     </form>
   );
 }

@@ -125,6 +125,14 @@ export function CardAdd({ id, name, photo, seen }: { id: string; name: string; p
   );
 }
 
+// Full label from tablet up; the short one keeps the phone's bottom bar on one line.
+const Label = ({ long, short }: { long: string; short: string }) => (
+  <>
+    <span className="label-long">{long}</span>
+    <span className="label-short">{short}</span>
+  </>
+);
+
 // Product page actions: add to the cart, or enquire about just this piece.
 export function PieceActions({ id, available, seen, phone, name, photo }: { id: string; available: number; seen: number | null; phone: string; name: string; photo: string | null }) {
   const inCart = useCart().some((l) => l.id === id);
@@ -133,24 +141,24 @@ export function PieceActions({ id, available, seen, phone, name, photo }: { id: 
     <div className="item-actions">
       {available > 0 ? (
         inCart ? (
-          <Link href="/cart" className="btn btn-quiet btn-block">
-            <CheckIcon size={18} /> In Enquiry Cart · View
+          <Link href="/cart" className="btn btn-quiet btn-block item-cart">
+            <CheckIcon size={18} /> <Label long="In Enquiry Cart · View" short="In Cart · View" />
           </Link>
         ) : (
           <button
             type="button"
-            className="btn btn-primary btn-block"
+            className="btn btn-primary btn-block item-cart"
             onClick={() => {
               addLine(id, seen);
               announce({ name, photo });
             }}
           >
-            <BagIcon size={18} /> Add to Enquiry Cart
+            <BagIcon size={18} /> <Label long="Add to Enquiry Cart" short="Add to Cart" />
           </button>
         )
       ) : null}
       <button type="button" className={`btn btn-block ${available > 0 ? "btn-quiet" : "btn-primary"}`} onClick={() => setHandoff(true)}>
-        <ChatIcon size={18} /> {available > 0 ? "Enquire About This Piece" : "Ask About Making One"}
+        <ChatIcon size={18} /> {available > 0 ? <Label long="Enquire About This Piece" short="Enquire" /> : <Label long="Ask About Making One" short="Ask the Store" />}
       </button>
       {phone && (
         <a href={`tel:${phone}`} className="icon-btn bar-btn" aria-label={`Call about ${name}`}>

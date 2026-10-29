@@ -66,7 +66,7 @@ export default async function Dashboard() {
           <div className="dash-card rate-hero rise" style={{ "--i": 0 } as React.CSSProperties}>
             <div className="rate-hero-head">
               <p className="stat-label">Today’s {main.label} rate</p>
-              <span className={`chip ${fresh ? "chip-good" : "chip-warn"}`}>
+              <span className={`state-chip ${fresh ? "state-good" : "state-warn"}`}>
                 {fresh ? <CheckIcon size={14} /> : <AlertIcon size={14} />} {fresh ? "Updated today" : "Not updated today"}
               </span>
             </div>

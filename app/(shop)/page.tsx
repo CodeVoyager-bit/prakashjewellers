@@ -11,7 +11,8 @@ export default async function Home() {
   const covers = items.flatMap((i) => i.photos.slice(0, 1)).slice(0, 3);
   const featured = items.filter((i) => i.featured).slice(0, 4);
   const latest = items.filter((i) => !i.featured).slice(0, 8);
-  const story = items.find((i) => i.photos[0])?.photos[0];
+  // A photo the hero isn't already showing, so the band doesn't repeat it.
+  const story = items.flatMap((i) => i.photos).find((p) => !covers.includes(p)) ?? covers[0];
 
   return (
     <>
@@ -53,8 +54,8 @@ export default async function Home() {
         </section>
       )}
 
-      <section className="wrap section" aria-labelledby="latest">
-        <SectionHead id="latest" eyebrow="New arrivals" title="Latest Pieces" link={items.length > 8 ? { href: "/collections", label: "View All" } : undefined} />
+      <section className="wrap section home-latest" aria-labelledby="latest">
+        <SectionHead id="latest" eyebrow="New arrivals" title="Latest Pieces" link={latest.length ? { href: "/collections", label: "View All" } : undefined} />
         {latest.length ? (
           <ItemGrid items={latest} s={s} />
         ) : (
