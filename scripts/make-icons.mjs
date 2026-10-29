@@ -22,8 +22,8 @@ const png = async (file, node, width, height, fonts) => {
 
 // Home-screen icons fill the square (phones round the corners); the mark stays inside the maskable safe circle.
 const icon = (size) => el("div", { width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", backgroundImage: BG }, [mark(Math.round(size * 0.6))]);
-await png("public/icon-512.png", icon(512), 512, 512);
-await png("public/icon-192.png", icon(192), 192, 192);
+await png("assets/icon-512.png", icon(512), 512, 512);
+await png("assets/icon-192.png", icon(192), 192, 192);
 await png("app/apple-icon.png", icon(180), 180, 180);
 
 // Browser-tab favicon: vector, so it stays sharp at any size.

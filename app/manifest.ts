@@ -1,6 +1,10 @@
 import type { MetadataRoute } from "next";
 import { getSettings } from "@/lib/data";
 import { THEME_COLORS } from "@/lib/fields";
+// Imported, not served from public/, so each URL carries a hash of the image: a new icon gets a new URL,
+// which is what makes phones and Chrome refresh an already-installed app's icon.
+import icon192 from "@/assets/icon-192.png";
+import icon512 from "@/assets/icon-512.png";
 
 // Lets phones install the site as an app (Android: Install; iPhone: Share → Add to Home Screen).
 // Nothing is cached offline on purpose: every price must be today's.
@@ -19,9 +23,9 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
     background_color: c.bg,
     theme_color: c.head,
     icons: [
-      { src: "/icon-192.png", sizes: "192x192", type: "image/png" },
-      { src: "/icon-512.png", sizes: "512x512", type: "image/png" },
-      { src: "/icon-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+      { src: icon192.src, sizes: "192x192", type: "image/png" },
+      { src: icon512.src, sizes: "512x512", type: "image/png" },
+      { src: icon512.src, sizes: "512x512", type: "image/png", purpose: "maskable" },
     ],
   };
 }
