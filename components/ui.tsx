@@ -3,7 +3,7 @@
 import { useEffect, useId, useRef, useState, useSyncExternalStore, ViewTransition, type ReactNode } from "react";
 import { useFormStatus } from "react-dom";
 import { rupees } from "@/lib/price";
-import { AppIcon, CloseIcon } from "./icons";
+import { AppIcon, CheckIcon, CloseIcon, ShareIcon } from "./icons";
 import { Photo } from "./photo";
 
 // Pilot analytics beacon; never delays the page. See app/api/track/route.ts.
@@ -95,6 +95,34 @@ export function ConfirmForm({ action, message, children, className }: { action: 
     <form action={action} className={className} onSubmit={(e) => confirm(message) || e.preventDefault()}>
       {children}
     </form>
+  );
+}
+
+// The phone's own share sheet (WhatsApp, Instagram, Messages…) where the browser has one; otherwise copies the link.
+export function ShareButton({ title, text }: { title: string; text: string }) {
+  const [copied, setCopied] = useState(false);
+  async function share() {
+    const url = location.origin + location.pathname;
+    if (navigator.share) {
+      try {
+        return await navigator.share({ title, text, url });
+      } catch (e) {
+        if ((e as Error).name === "AbortError") return; // closed the sheet
+      }
+    }
+    await navigator.clipboard.writeText(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2500);
+  }
+  return (
+    <>
+      <button type="button" className="share-btn" onClick={share}>
+        {copied ? <CheckIcon size={16} /> : <ShareIcon size={16} />} {copied ? "Link Copied" : "Share"}
+      </button>
+      <span className="sr-only" role="status">
+        {copied ? "Link copied" : ""}
+      </span>
+    </>
   );
 }
 

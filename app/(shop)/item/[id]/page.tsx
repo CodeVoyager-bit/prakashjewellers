@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { PieceActions } from "@/components/cart";
 import { BackIcon } from "@/components/icons";
 import { PriceBreakdown, StaleNotice } from "@/components/shop";
-import { Gallery, TrackView } from "@/components/ui";
+import { Gallery, ShareButton, TrackView } from "@/components/ui";
 import { auth } from "@/lib/auth";
 import cloudinaryLoader from "@/lib/cloudinary-loader";
 import { DETAILS, getItem, getSettings, priceFor, STATUSES } from "@/lib/data";
@@ -61,10 +61,13 @@ export default async function ItemPage({ params }: Props) {
         <Gallery id={item.id} photos={item.photos} name={item.name} />
 
         <div className="item-info">
-          <div className="pills pills-static">
-            {item.demo && <span className="pill pill-sample">Sample piece for demonstration</span>}
-            {item.qty <= 0 && <span className="pill pill-out">Sold out</span>}
-            {item.qty === 1 && <span className="pill pill-one">One of a kind</span>}
+          <div className="item-top">
+            <div className="pills">
+              {item.demo && <span className="pill pill-sample">Sample piece for demonstration</span>}
+              {item.qty <= 0 && <span className="pill pill-out">Sold out</span>}
+              {item.qty === 1 && <span className="pill pill-one">One of a kind</span>}
+            </div>
+            <ShareButton title={item.name} text={`${item.name}${item.code ? ` (${item.code})` : ""} at ${s.name}`} />
           </div>
           {item.category && <p className="eyebrow">{item.category}</p>}
           <h1>{item.name}</h1>
