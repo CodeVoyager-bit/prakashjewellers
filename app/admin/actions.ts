@@ -113,6 +113,7 @@ export async function saveItem(_: unknown, fd: FormData): Promise<string> {
     photos = JSON.parse(text(fd, "photos", 5000));
   } catch {}
   photos = photos.filter((p) => typeof p === "string" && /^[\w/-]+$/.test(p)).slice(0, 12);
+  const video = /^[\w/-]+$/.test(text(fd, "video")) ? text(fd, "video") : null;
 
   const pricing = text(fd, "pricing") === "fixed" ? "fixed" : "weight";
   const status = text(fd, "status") as Status;
@@ -133,6 +134,7 @@ export async function saveItem(_: unknown, fd: FormData): Promise<string> {
     fixedPrice: fixedPrice || null,
     qty: Math.max(0, Math.floor(qty ?? 0)),
     photos,
+    video,
     ...(Object.fromEntries(Object.keys(DETAILS).map((k) => [k, text(fd, k, 120)])) as Record<DetailKey, string>),
   } as const;
   const code = text(fd, "code", 20).toUpperCase();
@@ -229,12 +231,12 @@ export async function setEnquiryStatus(id: string, status: EnquiryStatus) {
   revalidatePath("/admin", "layout");
 }
 
-// Lets the browser upload straight to Cloudinary, so photos never pass through Vercel's size limit.
-export async function uploadSignature() {
+// Lets the browser upload straight to Cloudinary, so photos and videos never pass through Vercel's size limit.
+export async function uploadSignature(kind: "image" | "video" = "image") {
   await requireStaff();
   const params = { folder: "prakashjewellers", timestamp: Math.round(Date.now() / 1000) };
   return {
-    url: `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`,
+    url: `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/${kind === "video" ? "video" : "image"}/upload`,
     fields: { ...params, api_key: process.env.CLOUDINARY_API_KEY!, signature: sign(params, process.env.CLOUDINARY_API_SECRET!) },
   };
 }

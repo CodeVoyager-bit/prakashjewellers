@@ -28,6 +28,7 @@ export const TagIcon = icon(<><path d="M12.6 2.6A2 2 0 0 0 11.2 2H4a2 2 0 0 0-2 
 export const AppIcon = icon(<><rect x="5" y="2" width="14" height="20" rx="2.5" /><path d="M11 18h2" /></>);
 export const BagIcon = icon(<><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" /><path d="M3 6h18" /><path d="M16 10a4 4 0 0 1-8 0" /></>);
 export const CheckIcon = icon(<path d="M20 6 9 17l-5-5" />);
+export const PlayIcon = icon(<path d="M7 4.5v15l12-7.5Z" />);
 export const ShareIcon = icon(<><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" /><path d="m16 6-4-4-4 4" /><path d="M12 2v13" /></>);
 export const SlidersIcon = icon(<><path d="M4 21v-7" /><path d="M4 10V3" /><path d="M12 21v-9" /><path d="M12 8V3" /><path d="M20 21v-5" /><path d="M20 12V3" /><path d="M1 14h6" /><path d="M9 8h6" /><path d="M17 16h6" /></>);
 export const ClockIcon = icon(<><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>);

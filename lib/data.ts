@@ -40,6 +40,7 @@ export type Item = {
   qty: number;
   description: string;
   photos: string[]; // Cloudinary public_ids, first one is the cover
+  video: string | null; // Cloudinary public_id of one short clip, shown after the photos
   views: number;
   cartAdds: number;
   enquiries: number;
@@ -108,6 +109,7 @@ export const toItem = ({ _id, ...d }: WithId<Partial<ItemDoc>>): Item => ({
   qty: 0,
   description: "",
   photos: [],
+  video: null,
   views: 0,
   cartAdds: 0,
   enquiries: 0,

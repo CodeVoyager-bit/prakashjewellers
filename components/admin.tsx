@@ -9,7 +9,8 @@ import type { Item } from "@/lib/data";
 import { CATEGORIES, DETAILS, ENQUIRY_STATUSES, STATUSES, type EnquiryStatus, type Status } from "@/lib/fields";
 import { formatDayTime, isToday, perGram, priceOf, rupees, type Rate } from "@/lib/price";
 import { staffEmail } from "@/lib/staff-email.mjs";
-import { BackIcon, CloseIcon, CopyIcon, EyeIcon, EyeOffIcon, MinusIcon, PlusIcon, SearchIcon } from "./icons";
+import { videoPoster, videoUrl } from "@/lib/cloudinary-loader";
+import { BackIcon, CloseIcon, CopyIcon, EyeIcon, EyeOffIcon, MinusIcon, PlayIcon, PlusIcon, SearchIcon } from "./icons";
 import { Photo } from "./photo";
 
 // Keeps only the 10-digit mobile: letters never appear, and "+91 98765 43210" or "098765…" paste cleanly.
@@ -372,6 +373,19 @@ export function RatesForm({ rates, makingPct, taxPct }: { rates: Rate[]; makingP
 
 const PLACEHOLDERS: Record<keyof typeof DETAILS, string> = { stones: "Kundan, pearls…", finish: "Antique…", occasion: "Wedding, festive…", includes: "Necklace and earrings…" };
 
+// Straight from the browser to Cloudinary with a signature from our server; returns the new public_id.
+async function sendToCloudinary(file: File, kind: "image" | "video") {
+  const { url, fields } = await uploadSignature(kind);
+  const fd = new FormData();
+  fd.append("file", file);
+  for (const [k, v] of Object.entries(fields)) fd.append(k, String(v));
+  const res = await fetch(url, { method: "POST", body: fd });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error?.message);
+  return json.public_id as string;
+}
+const uploadFailed = (e: unknown) => (e instanceof Error && e.message ? `Upload failed: ${e.message}` : "Upload failed. Check the connection and try again.");
+
 export function ItemForm({ item, categories, rates, makingPct, taxPct, copied }: { item: Item | null; categories: string[]; rates: Rate[]; makingPct: number; taxPct: number; copied?: boolean }) {
   const [error, setError] = useState("");
   // On phones the message sits below the long form, so bring it into view.
@@ -382,6 +396,9 @@ export function ItemForm({ item, categories, rates, makingPct, taxPct, copied }:
   const [photos, setPhotos] = useState(item?.photos ?? []);
   const [uploading, setUploading] = useState(0);
   const [uploadError, setUploadError] = useState("");
+  const [video, setVideo] = useState(item?.video ?? null);
+  const [videoBusy, setVideoBusy] = useState(false);
+  const [videoError, setVideoError] = useState("");
   const [pricing, setPricing] = useState<"weight" | "fixed">(item?.pricing ?? "weight");
   const [category, setCategory] = useState(item?.category ?? "");
   const [newCategory, setNewCategory] = useState(false);
@@ -406,21 +423,28 @@ export function ItemForm({ item, categories, rates, makingPct, taxPct, copied }:
     setUploadError("");
     setUploading(files.length);
     try {
-      const { url, fields } = await uploadSignature();
       for (const file of files) {
-        const fd = new FormData();
-        fd.append("file", file);
-        for (const [k, v] of Object.entries(fields)) fd.append(k, String(v));
-        const res = await fetch(url, { method: "POST", body: fd });
-        const json = await res.json();
-        if (!res.ok) throw new Error(json.error?.message);
-        setPhotos((p) => [...p, json.public_id]);
+        const id = await sendToCloudinary(file, "image");
+        setPhotos((p) => [...p, id]);
         setUploading((x) => x - 1);
       }
     } catch (e) {
-      setUploadError(e instanceof Error && e.message ? `Upload failed: ${e.message}` : "Upload failed. Check the connection and try again.");
+      setUploadError(uploadFailed(e));
     }
     setUploading(0);
+  }
+  async function uploadVideo(file?: File) {
+    if (!file) return;
+    setVideoError("");
+    // Cloudinary's free plan takes a video of up to 100 MB in one upload.
+    if (file.size > 100e6) return setVideoError("That video is over 100 MB. Trim it to a short clip and try again.");
+    setVideoBusy(true);
+    try {
+      setVideo(await sendToCloudinary(file, "video"));
+    } catch (e) {
+      setVideoError(uploadFailed(e));
+    }
+    setVideoBusy(false);
   }
   const move = (i: number, d: -1 | 1) => setPhotos((p) => {
     const next = [...p];
@@ -448,6 +472,7 @@ export function ItemForm({ item, categories, rates, makingPct, taxPct, copied }:
         )}
         <input type="hidden" name="id" value={item?.id ?? ""} />
         <input type="hidden" name="photos" value={JSON.stringify(photos)} />
+        <input type="hidden" name="video" value={video ?? ""} />
         <input type="hidden" name="pricing" value={pricing} />
 
         <div className="field">
@@ -623,6 +648,34 @@ export function ItemForm({ item, categories, rates, makingPct, taxPct, copied }:
             </p>
           )}
         </fieldset>
+
+        <fieldset className="form-grid">
+          <legend>Video (optional)</legend>
+          <p className="help">One short clip, ideally under 30 seconds, turning the piece in good light. Customers see it after the photos, playing silently on a loop.</p>
+          <ul className="photos">
+            <li className={video ? "photo" : undefined}>
+              {video ? (
+                <>
+                  <video src={videoUrl(video)} poster={videoPoster(video, 400)} muted loop playsInline autoPlay preload="metadata" aria-label="Product video" />
+                  <button type="button" className="photo-btn remove-btn" aria-label="Remove video" onClick={() => setVideo(null)}>
+                    <CloseIcon size={16} />
+                  </button>
+                </>
+              ) : (
+                <label className="upload" aria-busy={videoBusy}>
+                  <input type="file" accept="video/*" className="sr-only" disabled={videoBusy} onChange={(e) => (uploadVideo(e.target.files?.[0]), (e.target.value = ""))} />
+                  <PlayIcon size={22} />
+                  <span>{videoBusy ? "Uploading video…" : "Add a Video"}</span>
+                </label>
+              )}
+            </li>
+          </ul>
+          {videoError && (
+            <p className="error" role="alert">
+              {videoError}
+            </p>
+          )}
+        </fieldset>
       </div>
 
       <aside className="panel preview-panel" aria-label="Price preview">
@@ -666,7 +719,7 @@ export function ItemForm({ item, categories, rates, makingPct, taxPct, copied }:
             {error}
           </p>
         )}
-        <button type="submit" className="btn btn-primary btn-block" disabled={saving || uploading > 0}>
+        <button type="submit" className="btn btn-primary btn-block" disabled={saving || uploading > 0 || videoBusy}>
           {saving ? "Saving…" : item ? "Save Changes" : "Add Product"}
         </button>
         {item && (
@@ -677,7 +730,7 @@ export function ItemForm({ item, categories, rates, makingPct, taxPct, copied }:
       </aside>
       <div className="save-bar">
         <span className="save-bar-total">{preview ? rupees(preview.total) : ""}</span>
-        <button type="submit" className="btn btn-primary" disabled={saving || uploading > 0}>
+        <button type="submit" className="btn btn-primary" disabled={saving || uploading > 0 || videoBusy}>
           {saving ? "Saving…" : item ? "Save Changes" : "Add Product"}
         </button>
       </div>

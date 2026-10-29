@@ -2,8 +2,9 @@
 
 import { useEffect, useId, useRef, useState, useSyncExternalStore, ViewTransition, type ReactNode } from "react";
 import { useFormStatus } from "react-dom";
+import { videoPoster, videoUrl } from "@/lib/cloudinary-loader";
 import { rupees } from "@/lib/price";
-import { AppIcon, CheckIcon, CloseIcon, ShareIcon } from "./icons";
+import { AppIcon, CheckIcon, CloseIcon, PlayIcon, ShareIcon } from "./icons";
 import { Photo } from "./photo";
 
 // Pilot analytics beacon; never delays the page. See app/api/track/route.ts.
@@ -136,26 +137,38 @@ export function PrintButton() {
 
 // Main photo with tappable thumbnails. The main photo shares a view-transition name with the
 // product's card, so it morphs from the grid into place when the page opens.
-export function Gallery({ id, photos, name }: { id: string; photos: string[]; name: string }) {
+// Photos, then the video (if any) as the last slide: silent, looping, with controls to unmute or go full screen.
+export function Gallery({ id, photos, name, video }: { id: string; photos: string[]; name: string; video?: string | null }) {
   const [i, setI] = useState(0);
+  const slides = video ? photos.length + 1 : photos.length;
+  const onVideo = video && i === photos.length;
   return (
     <div className="gallery">
       <ViewTransition name={`piece-${id}`} share="morph" default="none">
         <div className="shot">
-          {photos.length ? (
+          {onVideo ? (
+            <video src={videoUrl(video)} poster={videoPoster(video)} autoPlay muted loop playsInline controls aria-label={`${name}, video`} />
+          ) : photos.length ? (
             <Photo id={photos[i]} alt={`${name}, photo ${i + 1} of ${photos.length}`} sizes="(min-width: 900px) 55vw, 100vw" w={1200} h={1500} preload={i === 0} />
           ) : (
             <Photo alt={`${name}, photo coming soon`} />
           )}
         </div>
       </ViewTransition>
-      {photos.length > 1 && (
-        <div className="thumbs" role="group" aria-label="Choose photo">
+      {slides > 1 && (
+        <div className="thumbs" role="group" aria-label="Choose photo or video">
           {photos.map((p, j) => (
             <button key={p} type="button" className="thumb-btn" aria-pressed={j === i} aria-label={`Photo ${j + 1}`} onClick={() => setI(j)}>
               <Photo id={p} alt="" sizes="80px" w={160} h={200} />
             </button>
           ))}
+          {video && (
+            <button type="button" className="thumb-btn thumb-video" aria-pressed={!!onVideo} aria-label="Video" onClick={() => setI(photos.length)}>
+              {/* eslint-disable-next-line @next/next/no-img-element -- a Cloudinary video frame, not a next/image photo */}
+              <img src={videoPoster(video, 160)} alt="" />
+              <PlayIcon size={28} />
+            </button>
+          )}
         </div>
       )}
     </div>

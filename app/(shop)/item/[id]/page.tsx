@@ -58,7 +58,7 @@ export default async function ItemPage({ params }: Props) {
         <BackIcon size={18} /> Collections
       </Link>
       <div className="item-grid">
-        <Gallery id={item.id} photos={item.photos} name={item.name} />
+        <Gallery id={item.id} photos={item.photos} name={item.name} video={item.video} />
 
         <div className="item-info">
           <div className="item-top">

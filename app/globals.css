@@ -546,6 +546,10 @@ body:has(.admin-bar) .chip { border-radius: 999px; }
 .thumb-btn:hover { opacity: 1; }
 .thumb-btn[aria-pressed="true"] { border-color: var(--ink); opacity: 1; }
 .thumb-btn img { width: 100%; height: 100%; object-fit: cover; }
+.shot video { display: block; width: 100%; height: 100%; object-fit: cover; animation: fade-in 0.6s var(--ease); }
+/* The video's thumbnail: its first frame with a play mark. */
+.thumb-video { position: relative; }
+.thumb-video svg { position: absolute; inset: 0; margin: auto; padding: 6px; border-radius: 50%; background: rgb(0 0 0 / 0.45); color: #fff; }
 .item-info h1 { margin-top: 8px; font-size: clamp(1.875rem, 7vw, 2.75rem); overflow-wrap: anywhere; }
 .pills { display: flex; flex-wrap: wrap; gap: 6px; }
 .item-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
@@ -605,6 +609,11 @@ body:has(.admin-bar) .chip { border-radius: 999px; }
   .item-actions .label-short { display: inline; }
   body:has(.item-actions) .tabs { display: none; }
   body:has(.item-actions) { padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
+}
+/* The smallest phones: drop the icons and tighten the spacing so the labels still fit on one line. */
+@media (max-width: 379px) {
+  .item-actions .btn-block svg { display: none; }
+  .item-actions .btn-block { letter-spacing: 0.06em; }
 }
 @media (min-width: 900px) {
   .item { padding-top: 8px; }
@@ -908,7 +917,7 @@ body:has(.admin-bar) .btn { min-height: 44px; padding: 0 18px; letter-spacing: 0
 
 .photos { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 10px; margin: 0; padding: 0; list-style: none; }
 .photo { position: relative; aspect-ratio: 4 / 5; overflow: hidden; border-radius: var(--r); background: var(--sand); animation: drop-in 0.4s var(--spring) both; }
-.photo img { width: 100%; height: 100%; object-fit: cover; }
+.photo img, .photo video { width: 100%; height: 100%; object-fit: cover; }
 .photo-btn { display: grid; place-items: center; width: 32px; height: 32px; border: 0; border-radius: 50%; background: rgb(255 255 255 / 0.94); font-size: 0.875rem; font-weight: 600; cursor: pointer; }
 .photo-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 .photo-move { position: absolute; right: 6px; bottom: 6px; display: flex; gap: 4px; }
