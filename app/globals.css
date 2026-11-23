@@ -1182,3 +1182,26 @@ body:has(.admin-bar) .text-link { font-size: 0.875rem; letter-spacing: 0; text-t
 .kv dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
 .exports { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-top: 14px; }
 @keyframes draw { to { stroke-dashoffset: 0; } }
+
+/* 3D showroom (components/showroom). Its canvas sits behind the page. Once an element's 3D version is drawn
+   (data-three="ready"), the flat photo or background steps aside so the 3D one shows through. Without the
+   showroom (reduced motion, data saver, older phones) none of this applies and the site is unchanged. */
+:is(.card-media, .tile-media, .story-media, .shot)[data-three="ready"] { background: transparent; }
+:is(.card-media, .tile-media, .story-media, .shot)[data-three="ready"] :is(img, .card-photo) { opacity: 0; transition: none; }
+.tile:has(> .tile-media[data-three="ready"])::after { display: none; }
+:is(.story, .hero)[data-three="ready"] { background: transparent; }
+.hero[data-three="ready"] :is(.hero-media, .hero-veil) { opacity: 0; visibility: hidden; transition: opacity 1.2s var(--ease), visibility 0s 1.2s; }
+.calc-ingot { display: none; }
+html[data-three="on"] .calc-ingot { display: block; height: 170px; margin-top: 12px; }
+@media (min-width: 600px) { html[data-three="on"] .calc-ingot { height: 210px; } }
+.split { display: inline-block; perspective: 600px; }
+.split-word, .split-char { display: inline-block; }
+.split-word { white-space: nowrap; }
+.split-char { transform-origin: 50% 100%; }
+/* A slow sheen across the rate bar, after React Bits' Shiny Text. */
+html[data-three="on"] .ratebar-rates { background: linear-gradient(100deg, currentColor 40%, #ffe7b0 50%, currentColor 60%) 0 0 / 250% 100%; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; animation: shiny 4s linear infinite; }
+@keyframes shiny { from { background-position: 125% 0; } to { background-position: -125% 0; } }
+/* Lenis smooth scrolling (desktop only) */
+html.lenis, html.lenis body { height: auto; }
+.lenis.lenis-smooth { scroll-behavior: auto !important; }
+.lenis.lenis-smooth [data-lenis-prevent] { overscroll-behavior: contain; }

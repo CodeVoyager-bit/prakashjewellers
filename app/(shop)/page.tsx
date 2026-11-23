@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowIcon, ChatIcon, ClockIcon, GemIcon, PinIcon, TagIcon } from "@/components/icons";
 import { Calculator } from "@/components/calculator";
 import { CollectionTiles, Empty, ItemGrid, Photo, SearchForm, SectionHead } from "@/components/shop";
+import { Show } from "@/components/showroom";
 import { HeroSlides } from "@/components/ui";
 import { collections, getItems, getSettings } from "@/lib/data";
 
@@ -16,7 +17,7 @@ export default async function Home() {
 
   return (
     <>
-      <section className="hero">
+      <Show as="section" className="hero" spec={{ kind: "stage" }}>
         <HeroSlides photos={covers} />
         <div className="hero-veil" aria-hidden="true" />
         <div className="wrap hero-copy">
@@ -38,7 +39,7 @@ export default async function Home() {
             </p>
           )}
         </div>
-      </section>
+      </Show>
 
       {items.length > 0 && (
         <section className="wrap section" aria-labelledby="worlds">
@@ -66,10 +67,10 @@ export default async function Home() {
       </section>
 
       {/* Editorial band: how prices are worked out, the store's real difference. No invented heritage claims. */}
-      <section className="story reveal" aria-labelledby="story-title">
-        <div className="story-media" aria-hidden="true">
+      <Show as="section" className="story reveal" aria-labelledby="story-title" spec={{ kind: "fill" }}>
+        <Show className="story-media" aria-hidden="true" spec={story ? { kind: "photo", src: story } : null}>
           <Photo id={story} alt="" sizes="(min-width: 900px) 50vw, 100vw" w={1400} h={1750} />
-        </div>
+        </Show>
         <div className="story-copy">
           <p className="eyebrow">Weighed, not guessed</p>
           <h2 id="story-title">Every Piece, Priced at Today’s Rate</h2>
@@ -81,7 +82,7 @@ export default async function Home() {
             Try the Calculator
           </Link>
         </div>
-      </section>
+      </Show>
 
       <section className="wrap section home-calc reveal" id="calculator" aria-labelledby="calc-title">
         <SectionHead id="calc-title" eyebrow="Price calculator" title="What Would It Cost Today?" />

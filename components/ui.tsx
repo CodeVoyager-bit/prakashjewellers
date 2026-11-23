@@ -8,6 +8,7 @@ import { videoPoster, videoUrl } from "@/lib/cloudinary-loader";
 import { rupees } from "@/lib/price";
 import { AppIcon, CheckIcon, CloseIcon, PlayIcon, SearchIcon, ShareIcon } from "./icons";
 import { Photo } from "./photo";
+import { useShowpiece } from "./showroom";
 
 // Pilot analytics beacon; never delays the page. See app/api/track/route.ts.
 export function track(e: "visit" | "view" | "cart" | "whatsapp", id?: string) {
@@ -105,7 +106,7 @@ export function Sheet({ open, onClose, title, children }: { open: boolean; onClo
   }, [open]);
   return (
     <dialog ref={ref} className="sheet" aria-labelledby={titleId} onClose={onClose} onClick={(e) => e.target === ref.current && onClose()}>
-      <div className="sheet-body">
+      <div className="sheet-body" data-lenis-prevent>
         <span className="sheet-grabber" aria-hidden="true" />
         <div className="sheet-head">
           <h2 id={titleId}>{title}</h2>
@@ -183,10 +184,12 @@ export function Gallery({ id, photos, name, video }: { id: string; photos: strin
   const [i, setI] = useState(0);
   const slides = video ? photos.length + 1 : photos.length;
   const onVideo = video && i === photos.length;
+  const shot = useRef<HTMLDivElement>(null);
+  useShowpiece(shot, !onVideo && photos[i] ? { kind: "case", src: photos[i] } : null);
   return (
     <div className="gallery">
       <ViewTransition name={`piece-${id}`} share="morph" default="none">
-        <div className="shot">
+        <div className="shot" ref={shot}>
           {onVideo ? (
             <video src={videoUrl(video)} poster={videoPoster(video)} autoPlay muted loop playsInline controls aria-label={`${name}, video`} />
           ) : photos.length ? (

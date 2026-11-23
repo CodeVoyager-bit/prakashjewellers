@@ -7,6 +7,7 @@ import { CardAdd } from "./cart";
 import { AlertIcon, PhoneIcon, SearchIcon } from "./icons";
 import { Monogram } from "./logo";
 import { Photo } from "./photo";
+import { RevealText, Show } from "./showroom";
 
 export { Photo };
 
@@ -61,7 +62,7 @@ export function ItemCard({ item, s, preload }: { item: Item; s: Settings; preloa
   const sizes = "(min-width: 1100px) 25vw, (min-width: 700px) 33vw, 50vw";
   return (
     <article className="card">
-      <div className="card-media">
+      <Show className="card-media" spec={item.photos[0] ? { kind: "photo", src: item.photos[0], src2: item.photos[1] } : null}>
         <Link href={href} tabIndex={-1} aria-hidden="true">
           <ViewTransition name={`piece-${item.id}`} share="morph" default="none">
             <div className="card-photo">
@@ -76,7 +77,7 @@ export function ItemCard({ item, s, preload }: { item: Item; s: Settings; preloa
           )}
         </Link>
         {item.qty > 0 && <CardAdd id={item.id} name={item.name} photo={item.photos[0] ?? null} seen={p?.total ?? null} />}
-      </div>
+      </Show>
       <div className="card-body">
         {tags.length > 0 && <p className="card-tags">{tags.join(" · ")}</p>}
         <h3 className="card-title">
@@ -164,9 +165,9 @@ export function CollectionTiles({ collections }: { collections: { name: string; 
       {collections.map((c, i) => (
         <li key={c.name} className="reveal" style={{ "--i": i } as React.CSSProperties}>
           <Link href={`/collections?c=${encodeURIComponent(c.name)}`} className="tile">
-            <span className="tile-media">
+            <Show as="span" className="tile-media" spec={c.photo ? { kind: "photo", src: c.photo, shade: 0.75, curve: true } : null}>
               <Photo id={c.photo} alt="" sizes="(min-width: 768px) 25vw, 45vw" w={600} h={800} />
-            </span>
+            </Show>
             <span className="tile-label">
               {c.name}
               <span className="tile-cta">Discover</span>
@@ -199,7 +200,9 @@ export function SectionHead({ id, title, eyebrow, link }: { id?: string; title: 
   return (
     <div className="section-head reveal">
       {eyebrow && <p className="eyebrow">{eyebrow}</p>}
-      <h2 id={id}>{title}</h2>
+      <h2 id={id} aria-label={title}>
+        <RevealText text={title} />
+      </h2>
       {link && (
         <Link href={link.href} className="text-link">
           {link.label}

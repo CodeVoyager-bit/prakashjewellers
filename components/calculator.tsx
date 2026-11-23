@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { formatDay, isToday, priceOf, rupees, type Rate } from "@/lib/price";
+import { useShowpiece } from "./showroom";
 import { CountUp } from "./ui";
 
 // Customers can try any weight; the rate, making and tax come from the store and are read-only here.
@@ -11,11 +12,16 @@ export function Calculator({ rates, makingPct, taxPct }: { rates: Rate[]; making
   const [grams, setGrams] = useState("10");
   const rate = usable.find((r) => r.key === key);
   const weight = Number(grams.replace(/,/g, ""));
+  const ingot = useRef<HTMLDivElement>(null);
+  useShowpiece(ingot, { kind: "ingot" }, weight > 0 && weight < 10000 ? weight : 0);
   const p = rate && weight > 0 && weight < 10000 ? priceOf({ pricing: "weight", rateKey: key, weight, netWeight: null, making: null, extraCharge: null, fixedPrice: null }, usable, { makingPct, taxPct }) : null;
 
   if (!usable.length) return <p className="notice notice-warn">Today’s rates are being updated. The calculator will work as soon as the store publishes them.</p>;
 
   return (
+    <>
+      {/* The 3D showroom draws a gold bar here, sized to the weight typed in. */}
+      <div className="calc-ingot" ref={ingot} aria-hidden="true" />
     <div className="calc">
       <div className="calc-inputs">
         <div className="field">
@@ -69,5 +75,6 @@ export function Calculator({ rates, makingPct, taxPct }: { rates: Rate[]; making
       </p>
       <p className="fine">Some pieces have their own making charge or stone charges, shown on their page. Final price and availability will be confirmed by the store.</p>
     </div>
+    </>
   );
 }

@@ -76,6 +76,10 @@ The site installs as an app, so customers get the shop's icon on their home scre
 
 The favicon, home-screen icons and the card shown when a link is shared on WhatsApp are all drawn from the PJ monogram by `npm run icons` (needs internet for the logo font). If the store sends its original logo artwork, update the monogram in `components/logo.tsx` and `scripts/make-icons.mjs`, then run it again.
 
+## 3D showroom
+
+The shop draws itself in 3D behind the page (`components/showroom`): gold bangles in the home hero, photos as panels that fold in, tilt and catch a gold sheen, a curved collection row, a glass display case on each piece, and a gold bar in the calculator that grows with the weight. Pages only mark elements; Three.js (React Three Fiber), GSAP and Lenis load after the page has shown, and only on devices that can run them. Phones get a lighter version; reduced motion, data saver and low-memory phones get the flat site. Add `?3d=off` (or `?3d=on`) to any address to compare; the choice lasts for the visit.
+
 ## Visitor figures
 
 The dashboard's visits, views, cart adds and WhatsApp opens are recorded only by the live Vercel site; local and preview servers don't count, even though they use the same database. Each piece's view counts once per browser: refreshing or coming back to it later doesn't add another. Before launch, clear the test traffic with `npm run stats:reset -- --yes` (enquiries and the sales log are kept).

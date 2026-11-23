@@ -3,6 +3,7 @@ import { CartLink, CartToast, TabNav } from "@/components/cart";
 import { InstagramIcon } from "@/components/icons";
 import { Logo } from "@/components/logo";
 import { RateBar } from "@/components/shop";
+import { Showroom } from "@/components/showroom";
 import { InstallLink, SearchLink, TrackVisit } from "@/components/ui";
 import { getSettings } from "@/lib/data";
 
@@ -11,6 +12,7 @@ export default async function ShopLayout({ children }: { children: React.ReactNo
   return (
     <>
       <TrackVisit />
+      <Showroom />
       <a href="#main" className="skip">
         Skip to Content
       </a>
